@@ -18,18 +18,23 @@ DNY dynamically changes DNS configurations only for blocked or inaccessible doma
 
 ### Features
 
-	1.	Automatic Detection:
-Identifies inaccessible domains due to DNS restrictions.
-	2.	Dynamic DNS Switching:
-Automatically reroutes blocked requests to external DNS providers (e.g., Google DNS, Cloudflare DNS).
-	3.	Ethical Content Check:
-Analyzes the requested domain for harmful or unethical content and provides warnings to users.
-	4.	User-Friendly Notifications:
-Notifies users when:
-	•	A domain is blocked.
-	•	DNS switching is successful.
-	•	A site is flagged as unsafe or unethical.
-	5.	Seamless Integration:
-Works in the background, requiring no user intervention or technical knowledge.
-	6.	Cross-Platform Support:
-Designed to work on Windows, macOS, and Linux.
+	1. **Automatic Detection**  
+   - Identifies inaccessible domains due to DNS restrictions.
+
+2. **Dynamic DNS Switching**  
+   - Automatically reroutes blocked requests to external DNS providers (e.g., Google DNS, Cloudflare DNS).
+
+3. **Ethical Content Check**  
+   - Analyzes the requested domain for harmful or unethical content and provides warnings to users.
+
+4. **User-Friendly Notifications**  
+   - Notifies users when:  
+     - A domain is blocked.  
+     - DNS switching is successful.  
+     - A site is flagged as unsafe or unethical.
+
+5. **Seamless Integration**  
+   - Works in the background, requiring no user intervention or technical knowledge.
+
+6. **Cross-Platform Support**  
+   - Designed to work on Windows, macOS, and Linux.
