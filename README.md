@@ -18,7 +18,7 @@ DNY dynamically changes DNS configurations only for blocked or inaccessible doma
 
 ### Features
 
-	1. **Automatic Detection**  
+1. **Automatic Detection**  
    - Identifies inaccessible domains due to DNS restrictions.
 
 2. **Dynamic DNS Switching**  
