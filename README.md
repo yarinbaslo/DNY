@@ -2,9 +2,9 @@
 
 DNY is a cutting-edge tool that dynamically manages DNS resolution to provide seamless, automated access to websites blocked due to DNS restrictions. The tool identifies DNS-related blocks, dynamically switches to an alternative DNS provider, and ensures an ethical browsing experience by analyzing site content. It operates transparently, requiring zero technical expertise from users.
 
-##Overview
+## Overview
 
-###Problem
+### Problem
 
 Access to specific websites is often restricted due to:
 	•	Government censorship.
@@ -12,11 +12,11 @@ Access to specific websites is often restricted due to:
 	•	Geographical content restrictions.
 Additionally, DNS servers may face downtimes, causing interruptions in connectivity. Manual DNS switching is tedious, especially for non-technical users.
 
-###Solution
+### Solution
 
 DNY dynamically changes DNS configurations only for blocked or inaccessible domains, ensuring a seamless user experience. It is automated, user-friendly, and compatible across platforms, helping users bypass DNS-related restrictions effortlessly.
 
-###Features
+### Features
 
 	1.	Automatic Detection:
 Identifies inaccessible domains due to DNS restrictions.
