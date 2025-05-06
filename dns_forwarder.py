@@ -4,6 +4,7 @@ import logging
 import subprocess
 import re
 import struct
+import platform
 from datetime import datetime
 from domain_analyzer import DomainAnalyzer
 from notifications import NotificationManager
@@ -64,6 +65,65 @@ class DNSForwarder:
             logging.error("Error detecting local DNS: %s", str(e))
             self.notifier.notify_dns_switch("Unknown", self.google_dns)
             return self.google_dns
+
+    def set_dns_linux(self, dns_ip="127.0.0.1"):
+        """Set DNS server for Linux systems."""
+        try:
+            resolv_conf = "/etc/resolv.conf"
+            with open(resolv_conf, "w") as f:
+                f.write(f"nameserver {dns_ip}\n")
+            self.logger.info(f"Successfully set DNS to {dns_ip} on Linux")
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to set DNS on Linux: {str(e)}")
+            return False
+
+    def set_dns_macos(self, interface="Wi-Fi", dns_ip="127.0.0.1"):
+        """Set DNS server for macOS systems."""
+        try:
+            subprocess.run(["networksetup", "-setdnsservers", interface, dns_ip], check=True)
+            self.logger.info(f"Successfully set DNS to {dns_ip} on macOS for interface {interface}")
+            return True
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Failed to set DNS on macOS: {str(e)}")
+            return False
+        except Exception as e:
+            self.logger.error(f"Unexpected error setting DNS on macOS: {str(e)}")
+            return False
+
+    def set_dns_windows(self, interface="Ethernet", dns_ip="127.0.0.1"):
+        """Set DNS server for Windows systems."""
+        try:
+            subprocess.run(["netsh", "interface", "ip", "set", "dns",
+                          f"name={interface}", f"source=static", f"addr={dns_ip}"],
+                         check=True)
+            self.logger.info(f"Successfully set DNS to {dns_ip} on Windows for interface {interface}")
+            return True
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Failed to set DNS on Windows: {str(e)}")
+            return False
+        except Exception as e:
+            self.logger.error(f"Unexpected error setting DNS on Windows: {str(e)}")
+            return False
+
+    def configure_local_dns(self, dns_ip="127.0.0.1"):
+        """Configure DNS settings based on the operating system."""
+        system = platform.system().lower()
+        success = False
+
+        if system == "linux":
+            success = self.set_dns_linux(dns_ip)
+        elif system == "darwin":  # macOS
+            success = self.set_dns_macos("Wi-Fi", dns_ip)
+        elif system == "windows":
+            success = self.set_dns_windows("Ethernet", dns_ip)
+        else:
+            self.logger.error(f"Unsupported operating system: {system}")
+            return False
+
+        if success:
+            self.notifier.notify_dns_switch("System DNS", dns_ip)
+        return success
 
     def start(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
