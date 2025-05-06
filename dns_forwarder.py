@@ -5,6 +5,7 @@ import subprocess
 import re
 import struct
 import platform
+import os
 from datetime import datetime
 from domain_analyzer import DomainAnalyzer
 from notifications import NotificationManager
@@ -20,7 +21,7 @@ class DNSForwarder:
         self.google_port = 53
         self.listen_port = 53
         self.socket = None
-        self.analyzer = DomainAnalyzer(api_key="openai-api-key")  # API key
+        self.analyzer = DomainAnalyzer(api_key="")  # API key
         self.notifier = NotificationManager()
         self.logger = logging.getLogger(__name__)
 
@@ -66,6 +67,67 @@ class DNSForwarder:
             self.notifier.notify_dns_switch("Unknown", self.google_dns)
             return self.google_dns
 
+    def get_network_interfaces(self):
+        """Get list of available network interfaces based on OS."""
+        system = platform.system().lower()
+        interfaces = []
+
+        if system == "darwin":  # macOS
+            try:
+                output = subprocess.check_output(['networksetup', '-listallnetworkservices']).decode()
+                interfaces = [line.strip() for line in output.split('\n') if line.strip()]
+                # Remove the first line which is usually a header
+                if interfaces and interfaces[0] == "An asterisk (*) denotes that a network service is disabled.":
+                    interfaces = interfaces[1:]
+            except Exception as e:
+                self.logger.error(f"Error getting network interfaces on macOS: {str(e)}")
+
+        elif system == "windows":
+            try:
+                output = subprocess.check_output(['netsh', 'interface', 'show', 'interface']).decode()
+                # Parse the output to get interface names
+                for line in output.split('\n'):
+                    if 'Connected' in line or 'Disconnected' in line:
+                        parts = line.split()
+                        if len(parts) >= 4:
+                            interfaces.append(parts[-1])
+            except Exception as e:
+                self.logger.error(f"Error getting network interfaces on Windows: {str(e)}")
+
+        elif system == "linux":
+            try:
+                # List all network interfaces
+                output = subprocess.check_output(['ip', 'link', 'show']).decode()
+                for line in output.split('\n'):
+                    if ': ' in line:
+                        interface = line.split(': ')[1].split(':')[0]
+                        if interface != 'lo':  # Exclude loopback
+                            interfaces.append(interface)
+            except Exception as e:
+                self.logger.error(f"Error getting network interfaces on Linux: {str(e)}")
+
+        return interfaces
+
+    def select_network_interface(self):
+        """Let user select a network interface."""
+        interfaces = self.get_network_interfaces()
+        if not interfaces:
+            self.logger.error("No network interfaces found")
+            return None
+
+        print("\nAvailable network interfaces:")
+        for i, interface in enumerate(interfaces, 1):
+            print(f"{i}. {interface}")
+
+        while True:
+            try:
+                choice = int(input("\nSelect interface number: "))
+                if 1 <= choice <= len(interfaces):
+                    return interfaces[choice - 1]
+                print("Invalid choice. Please try again.")
+            except ValueError:
+                print("Please enter a number.")
+
     def set_dns_linux(self, dns_ip="127.0.0.1"):
         """Set DNS server for Linux systems."""
         try:
@@ -78,8 +140,13 @@ class DNSForwarder:
             self.logger.error(f"Failed to set DNS on Linux: {str(e)}")
             return False
 
-    def set_dns_macos(self, interface="Wi-Fi", dns_ip="127.0.0.1"):
+    def set_dns_macos(self, interface=None, dns_ip="127.0.0.1"):
         """Set DNS server for macOS systems."""
+        if interface is None:
+            interface = self.select_network_interface()
+            if interface is None:
+                return False
+
         try:
             subprocess.run(["networksetup", "-setdnsservers", interface, dns_ip], check=True)
             self.logger.info(f"Successfully set DNS to {dns_ip} on macOS for interface {interface}")
@@ -91,8 +158,13 @@ class DNSForwarder:
             self.logger.error(f"Unexpected error setting DNS on macOS: {str(e)}")
             return False
 
-    def set_dns_windows(self, interface="Ethernet", dns_ip="127.0.0.1"):
+    def set_dns_windows(self, interface=None, dns_ip="127.0.0.1"):
         """Set DNS server for Windows systems."""
+        if interface is None:
+            interface = self.select_network_interface()
+            if interface is None:
+                return False
+
         try:
             subprocess.run(["netsh", "interface", "ip", "set", "dns",
                           f"name={interface}", f"source=static", f"addr={dns_ip}"],
@@ -114,9 +186,9 @@ class DNSForwarder:
         if system == "linux":
             success = self.set_dns_linux(dns_ip)
         elif system == "darwin":  # macOS
-            success = self.set_dns_macos("Wi-Fi", dns_ip)
+            success = self.set_dns_macos(None, dns_ip)
         elif system == "windows":
-            success = self.set_dns_windows("Ethernet", dns_ip)
+            success = self.set_dns_windows(None, dns_ip)
         else:
             self.logger.error(f"Unsupported operating system: {system}")
             return False
