@@ -42,4 +42,8 @@ class DNSForwarder:
         """
         if self.server:
             self.server.stop()
-            self.server = None 
+            self.server = None
+            
+            # Configure system DNS
+            if not self.os_handler.configure_local_dns(self.local_dns):
+                logging.error("Failed to configure system DNS settings") 
