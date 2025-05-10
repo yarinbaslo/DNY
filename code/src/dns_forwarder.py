@@ -2,6 +2,7 @@ import logging
 from .os_handlers.factory import OSHandlerFactory
 from .dns.resolver import DNSResolver
 from .dns.server import DNSServer
+from .notification_manager import NotificationManager
 
 class DNSForwarder:
     def __init__(self):
@@ -12,6 +13,7 @@ class DNSForwarder:
         self.google_port = 53
         self.listen_port = 53
         self.server = None
+        self.notification_manager = NotificationManager()
 
     def start(self):
         """
@@ -19,7 +21,9 @@ class DNSForwarder:
         """
         # Configure system DNS
         if not self.os_handler.configure_local_dns():
-            logging.error("Failed to configure system DNS settings")
+            error_msg = "Failed to configure system DNS settings"
+            logging.error(error_msg)
+            self.notification_manager.notify_dns_error(error_msg)
             return
 
         # Create resolver and server instances
@@ -32,6 +36,12 @@ class DNSForwarder:
 
         self.server = DNSServer(self.listen_port, resolver)
         logging.info("Primary DNS: %s, Fallback DNS: %s", self.local_dns, self.google_dns)
+        
+        # Notify about service start
+        self.notification_manager.notify_service_status(
+            "Started",
+            f"Using Primary DNS: {self.local_dns}, Fallback DNS: {self.google_dns}"
+        )
         
         # Start the server
         self.server.start()
@@ -46,4 +56,11 @@ class DNSForwarder:
             
             # Configure system DNS
             if not self.os_handler.configure_local_dns(self.local_dns):
-                logging.error("Failed to configure system DNS settings") 
+                error_msg = "Failed to restore system DNS settings"
+                logging.error(error_msg)
+                self.notification_manager.notify_dns_error(error_msg)
+            else:
+                self.notification_manager.notify_dns_change("127.0.0.1", self.local_dns)
+            
+            # Notify about service stop
+            self.notification_manager.notify_service_status("Stopped") 

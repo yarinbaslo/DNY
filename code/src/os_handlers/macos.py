@@ -101,4 +101,24 @@ class MacOSHandler(OSHandler):
             return False
         except Exception as e:
             logging.error(f"Unexpected error setting DNS on macOS: {str(e)}")
-            return False 
+            return False
+
+    def notify(self, title: str, message: str, notification_type: str = "info") -> None:
+        """
+        Send a system notification on macOS using terminal-notifier.
+        
+        Args:
+            title: Notification title
+            message: Notification message
+            notification_type: Type of notification (info, warning, error)
+        """
+        try:
+            # Use terminal-notifier for macOS notifications
+            subprocess.call([
+                'terminal-notifier',
+                '-title', title,
+                '-message', message,
+                '-sound', 'default'
+            ])
+        except Exception as e:
+            self.logger.error(f"Failed to send macOS notification: {str(e)}") 

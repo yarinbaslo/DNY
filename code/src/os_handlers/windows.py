@@ -88,4 +88,25 @@ class WindowsHandler(OSHandler):
             return False
         except Exception as e:
             logging.error(f"Unexpected error setting DNS on Windows: {str(e)}")
-            return False 
+            return False
+
+    def notify(self, title: str, message: str, notification_type: str = "info") -> None:
+        """
+        Send a system notification on Windows using win10toast.
+        
+        Args:
+            title: Notification title
+            message: Notification message
+            notification_type: Type of notification (info, warning, error)
+        """
+        try:
+            from win10toast import ToastNotifier
+            toaster = ToastNotifier()
+            toaster.show_toast(
+                title,
+                message,
+                duration=5,  # Show for 5 seconds
+                threaded=True  # Run in a separate thread
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to send Windows notification: {str(e)}") 
