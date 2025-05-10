@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from domain_analyzer import DomainAnalyzer
 from notifications import NotificationManager
+from ip_blocker import is_blocked_ip  # Import the IP blocker
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -74,59 +75,56 @@ class DNSForwarder:
 
         if system == "darwin":  # macOS
             try:
-                output = subprocess.check_output(['networksetup', '-listallnetworkservices']).decode()
-                interfaces = [line.strip() for line in output.split('\n') if line.strip()]
-                # Remove the first line which is usually a header
-                if interfaces and interfaces[0] == "An asterisk (*) denotes that a network service is disabled.":
-                    interfaces = interfaces[1:]
+                # Get the active interface using route command
+                active_interface = subprocess.check_output(['route', 'get', 'default']).decode()
+                for line in active_interface.split('\n'):
+                    if 'interface:' in line:
+                        interface_name = line.split(':')[1].strip()
+                        # Get the service name for this interface
+                        services = subprocess.check_output(['networksetup', '-listallnetworkservices']).decode()
+                        for service in services.split('\n'):
+                            if service.strip() and not service.startswith('*'):
+                                # Check if this service matches our interface
+                                service_info = subprocess.check_output(['networksetup', '-getinfo', service.strip()]).decode()
+                                if interface_name in service_info:
+                                    interfaces.append(service.strip())
+                                    break
             except Exception as e:
                 self.logger.error(f"Error getting network interfaces on macOS: {str(e)}")
 
         elif system == "windows":
             try:
-                output = subprocess.check_output(['netsh', 'interface', 'show', 'interface']).decode()
-                # Parse the output to get interface names
+                # Get active interface using ipconfig
+                output = subprocess.check_output(['ipconfig']).decode()
+                current_interface = None
                 for line in output.split('\n'):
-                    if 'Connected' in line or 'Disconnected' in line:
-                        parts = line.split()
-                        if len(parts) >= 4:
-                            interfaces.append(parts[-1])
+                    if 'adapter' in line.lower():
+                        current_interface = line.split(':')[0].strip()
+                    elif 'IPv4' in line and current_interface:
+                        # If it has an IP address, it's active
+                        interfaces.append(current_interface)
+                        current_interface = None
             except Exception as e:
                 self.logger.error(f"Error getting network interfaces on Windows: {str(e)}")
 
         elif system == "linux":
             try:
-                # List all network interfaces
-                output = subprocess.check_output(['ip', 'link', 'show']).decode()
-                for line in output.split('\n'):
-                    if ': ' in line:
-                        interface = line.split(': ')[1].split(':')[0]
-                        if interface != 'lo':  # Exclude loopback
-                            interfaces.append(interface)
+                # Get active interface using ip route
+                output = subprocess.check_output(['ip', 'route', 'get', '8.8.8.8']).decode()
+                if 'dev' in output:
+                    interface = output.split('dev')[1].split()[0]
+                    interfaces.append(interface)
             except Exception as e:
                 self.logger.error(f"Error getting network interfaces on Linux: {str(e)}")
 
         return interfaces
 
-    def select_network_interface(self):
-        """Let user select a network interface."""
+    def get_active_interface(self):
+        """Get the active network interface."""
         interfaces = self.get_network_interfaces()
-        if not interfaces:
-            self.logger.error("No network interfaces found")
-            return None
-
-        print("\nAvailable network interfaces:")
-        for i, interface in enumerate(interfaces, 1):
-            print(f"{i}. {interface}")
-
-        while True:
-            try:
-                choice = int(input("\nSelect interface number: "))
-                if 1 <= choice <= len(interfaces):
-                    return interfaces[choice - 1]
-                print("Invalid choice. Please try again.")
-            except ValueError:
-                print("Please enter a number.")
+        if interfaces:
+            return interfaces[0]  # Return the first (and should be only) active interface
+        return None
 
     def set_dns_linux(self, dns_ip="127.0.0.1"):
         """Set DNS server for Linux systems."""
@@ -143,8 +141,9 @@ class DNSForwarder:
     def set_dns_macos(self, interface=None, dns_ip="127.0.0.1"):
         """Set DNS server for macOS systems."""
         if interface is None:
-            interface = self.select_network_interface()
+            interface = self.get_active_interface()
             if interface is None:
+                self.logger.error("No active network interface found")
                 return False
 
         try:
@@ -161,8 +160,9 @@ class DNSForwarder:
     def set_dns_windows(self, interface=None, dns_ip="127.0.0.1"):
         """Set DNS server for Windows systems."""
         if interface is None:
-            interface = self.select_network_interface()
+            interface = self.get_active_interface()
             if interface is None:
+                self.logger.error("No active network interface found")
                 return False
 
         try:
@@ -211,6 +211,48 @@ class DNSForwarder:
             except Exception as e:
                 logging.error("Error in main loop: %s", str(e))
 
+    def _extract_ip_from_response(self, response_data):
+        """Extract the first IP address from a DNS response."""
+        try:
+            # Skip header (12 bytes)
+            pos = 12
+            
+            # Skip question section
+            while True:
+                length = response_data[pos]
+                if length == 0:
+                    pos += 5  # Skip type and class
+                    break
+                pos += 1
+                pos += length
+            
+            # Check if we have answers
+            ancount = struct.unpack('!H', response_data[6:8])[0]
+            if ancount == 0:
+                return None
+                
+            # Skip answer name (compressed)
+            pos += 2  # Skip pointer
+            
+            # Get type and class
+            rtype = struct.unpack('!H', response_data[pos:pos+2])[0]
+            pos += 4  # Skip class and TTL
+            
+            # Get data length
+            rdlength = struct.unpack('!H', response_data[pos:pos+2])[0]
+            pos += 2
+            
+            # If it's an A record (type 1), extract the IP
+            if rtype == 1 and rdlength == 4:
+                ip_bytes = response_data[pos:pos+4]
+                return socket.inet_ntoa(ip_bytes)
+                
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting IP from response: {str(e)}")
+            return None
+
     def handle_query(self, data, client_address):
         try:
             # Extract domain from DNS query
@@ -233,9 +275,18 @@ class DNSForwarder:
             try:
                 local_response = self.forward_query(data, self.local_dns)
                 if self._has_records(local_response):
-                    self.logger.info("Resolved by local DNS: %s", domain)
-                    self.socket.sendto(local_response, client_address)
-                    return
+                    # Check if the resolved IP is blocked
+                    resolved_ip = self._extract_ip_from_response(local_response)
+                    if resolved_ip:
+                        blocked, reason = is_blocked_ip(resolved_ip)
+                        if blocked:
+                            self.logger.info(f"Local DNS returned blocked IP {resolved_ip}: {reason}, trying Google DNS")
+                            self.notifier.notify_dns_switch(self.local_dns, self.google_dns)
+                            # Fall through to Google DNS
+                        else:
+                            self.logger.info("Resolved by local DNS: %s", domain)
+                            self.socket.sendto(local_response, client_address)
+                            return
             except Exception as e:
                 self.logger.warning("Local DNS failed: %s", str(e))
                 self.notifier.notify_dns_switch(self.local_dns, self.google_dns)
