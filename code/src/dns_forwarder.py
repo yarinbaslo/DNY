@@ -1,64 +1,25 @@
 import socket
 import threading
 import logging
-import subprocess
-import re
 import struct
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from .os_handlers.factory import OSHandlerFactory
 
 class DNSForwarder:
     def __init__(self):
-        self.local_dns = self.get_local_dns()  # Automatically detect local DNS
+        self.os_handler = OSHandlerFactory.create_handler()
+        self.local_dns = self.os_handler.get_local_dns()
         self.local_port = 53
-        self.google_dns = '8.8.8.8'  # Google DNS as fallback
+        self.google_dns = '8.8.8.8'
         self.google_port = 53
         self.listen_port = 53
         self.socket = None
 
-    def get_local_dns(self):
-        try:
-            # Try to get DNS from resolv.conf (Linux/macOS)
-            with open('/etc/resolv.conf', 'r') as f:
-                for line in f:
-                    if line.startswith('nameserver'):
-                        dns = line.split()[1]
-                        logging.info("Found local DNS in resolv.conf: %s", dns)
-                        return dns
-
-            # Try to get DNS from system configuration (macOS)
-            try:
-                output = subprocess.check_output(['scutil', '--dns']).decode()
-                match = re.search(r'nameserver\[0\] : (\d+\.\d+\.\d+\.\d+)', output)
-                if match:
-                    dns = match.group(1)
-                    logging.info("Found local DNS from scutil: %s", dns)
-                    return dns
-            except:
-                pass
-
-            # Try to get DNS from ipconfig (Windows)
-            try:
-                output = subprocess.check_output(['ipconfig', '/all']).decode()
-                match = re.search(r'DNS Servers[^\d]*(\d+\.\d+\.\d+\.\d+)', output)
-                if match:
-                    dns = match.group(1)
-                    logging.info("Found local DNS from ipconfig: %s", dns)
-                    return dns
-            except:
-                pass
-
-            # If all methods fail, use a common default
-            default_dns = '8.8.8.8'
-            logging.warning("Could not detect local DNS, using default: %s", default_dns)
-            return default_dns
-
-        except Exception as e:
-            logging.error("Error detecting local DNS: %s", str(e))
-            return '8.8.8.8'  # Fallback to Google DNS
-
     def start(self):
+        # Configure system DNS
+        if not self.os_handler.configure_local_dns():
+            logging.error("Failed to configure system DNS settings")
+            return
+
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(('0.0.0.0', self.listen_port))
@@ -74,33 +35,30 @@ class DNSForwarder:
 
     def handle_query(self, data, client_address):
         try:
-            # Extract query ID from DNS packet
             query_id = struct.unpack('!H', data[:2])[0]
             logging.info("Received DNS query with ID: %d", query_id)
 
-            # First try local DNS
+            # Try local DNS first
             local_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            local_socket.settimeout(2)  # Short timeout for local DNS
+            local_socket.settimeout(10)
             local_socket.sendto(data, (self.local_dns, self.local_port))
 
             try:
                 response_data, _ = local_socket.recvfrom(1024)
-                # Check if response has answers
-                if len(response_data) > 12:  # DNS header is 12 bytes
+                if len(response_data) > 12:
                     answer_count = struct.unpack('!H', response_data[6:8])[0]
                     if answer_count > 0:
                         logging.info("Local DNS resolved query ID: %d", query_id)
                         self.socket.sendto(response_data, client_address)
                         return
-                
                 logging.info("Local DNS returned no answers for query ID: %d, trying Google DNS", query_id)
-                
+
             except socket.timeout:
                 logging.info("Local DNS timeout for query ID: %d, trying Google DNS", query_id)
             finally:
                 local_socket.close()
 
-            # Try Google DNS
+            # Try Google DNS as fallback
             google_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             google_socket.settimeout(5)
             google_socket.sendto(data, (self.google_dns, self.google_port))
@@ -115,9 +73,4 @@ class DNSForwarder:
                 google_socket.close()
 
         except Exception as e:
-            logging.error("Error handling query: %s", str(e))
-
-if __name__ == "__main__":
-    # Create and start the DNS forwarder
-    dns_forwarder = DNSForwarder()
-    dns_forwarder.start() 
+            logging.error("Error handling query: %s", str(e)) 
