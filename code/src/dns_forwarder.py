@@ -1,7 +1,7 @@
 import logging
-from .os_handlers.factory import OSHandlerFactory
-from .dns.resolver import DNSResolver
-from .dns.server import DNSServer
+from os_handlers.factory import OSHandlerFactory
+from dns.resolver import DNSResolver
+from dns.server import DNSServer
 
 class DNSForwarder:
     def __init__(self):
@@ -19,7 +19,8 @@ class DNSForwarder:
         """
         # Configure system DNS
         if not self.os_handler.configure_local_dns():
-            logging.error("Failed to configure system DNS settings")
+            error_msg = "Failed to configure system DNS settings"
+            logging.error(error_msg)
             return
 
         # Create resolver and server instances

@@ -15,7 +15,7 @@ def main():
     except KeyboardInterrupt:
         logging.info("DNS Forwarder stopped by user")
     except Exception as e:
-        logging.error(f"DNS Forwarder stopped due to error: {str(e)}")
+        logging.error("DNS Forwarder stopped due to error: %s", str(e))
 
 if __name__ == "__main__":
     main() 

@@ -1,7 +1,7 @@
 import socket
 import struct
 import logging
-from ..ip_blocker import IPBlocker
+from ip_blocker import IPBlocker
 
 class DNSResolver:
     def __init__(self, primary_dns, primary_port, fallback_dns, fallback_port):
