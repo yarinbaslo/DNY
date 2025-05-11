@@ -10,17 +10,12 @@ class OSHandler(ABC):
         pass
 
     @abstractmethod
-    def get_network_interfaces(self) -> list:
-        """Get list of available network interfaces."""
-        pass
-
-    @abstractmethod
     def get_active_interface(self) -> str:
         """Get the active network interface."""
         pass
 
     @abstractmethod
-    def set_dns(self, dns_ip: str = "127.0.0.1", interface: str = None) -> bool:
+    def set_dns(self, dns_ip: str = "127.0.0.1") -> bool:
         """Set DNS server for the system."""
         pass
 

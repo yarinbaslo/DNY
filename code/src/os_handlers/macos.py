@@ -25,24 +25,6 @@ class MacOSHandler(OSHandler):
             logging.error("Error detecting local DNS: %s", str(e))
         return '8.8.8.8'
 
-    def get_network_interfaces(self) -> list:
-        interfaces = []
-        try:
-            active_interface = subprocess.check_output(['route', 'get', 'default'], encoding='utf-8', errors='ignore')
-            for line in active_interface.split('\n'):
-                if 'interface:' in line:
-                    interface_name = line.split(':')[1].strip()
-                    services = subprocess.check_output(['networksetup', '-listallnetworkservices'], encoding='utf-8', errors='ignore')
-                    for service in services.split('\n'):
-                        if service.strip() and not service.startswith('*'):
-                            service_info = subprocess.check_output(['networksetup', '-getinfo', service.strip()], encoding='utf-8', errors='ignore')
-                            if interface_name in service_info:
-                                interfaces.append(service.strip())
-                                break
-        except Exception as e:
-            logging.error(f"Error getting network interfaces on macOS: {str(e)}")
-        return interfaces
-
     def get_active_interface(self) -> str:
         try:
             # Get the default route interface
@@ -81,16 +63,13 @@ class MacOSHandler(OSHandler):
             
         except Exception as e:
             logging.error(f"Error getting active interface on macOS: {str(e)}")
-            # Fallback to the old behavior
-            interfaces = self.get_network_interfaces()
-            return interfaces[0] if interfaces else None
+            return None
 
-    def set_dns(self, dns_ip: str = "127.0.0.1", interface: str = None) -> bool:
+    def set_dns(self, dns_ip: str = "127.0.0.1") -> bool:
+        interface = self.get_active_interface()
         if interface is None:
-            interface = self.get_active_interface()
-            if interface is None:
-                logging.error("No active network interface found")
-                return False
+            logging.error("No active network interface found")
+            return False
 
         try:
             subprocess.run(["networksetup", "-setdnsservers", interface, dns_ip], check=True)

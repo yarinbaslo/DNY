@@ -15,17 +15,6 @@ class LinuxHandler(OSHandler):
             logging.error("Error reading resolv.conf: %s", str(e))
         return '8.8.8.8'
 
-    def get_network_interfaces(self) -> list:
-        interfaces = []
-        try:
-            output = subprocess.check_output(['ip', 'route', 'get', '8.8.8.8'], encoding='utf-8', errors='ignore')
-            if 'dev' in output:
-                interface = output.split('dev')[1].split()[0]
-                interfaces.append(interface)
-        except Exception as e:
-            logging.error(f"Error getting network interfaces on Linux: {str(e)}")
-        return interfaces
-
     def get_active_interface(self) -> str:
         try:
             # First try to get the default route interface
@@ -49,17 +38,18 @@ class LinuxHandler(OSHandler):
                 elif current_interface and 'state UP' in line and 'inet ' in line:
                     return current_interface
 
-            # If still no interface found, fall back to the old method
-            interfaces = self.get_network_interfaces()
-            return interfaces[0] if interfaces else None
+            return None
 
         except Exception as e:
             logging.error(f"Error getting active interface on Linux: {str(e)}")
-            # Fallback to the old behavior
-            interfaces = self.get_network_interfaces()
-            return interfaces[0] if interfaces else None
+            return None
 
-    def set_dns(self, dns_ip: str = "127.0.0.1", interface: str = None) -> bool:
+    def set_dns(self, dns_ip: str = "127.0.0.1") -> bool:
+        interface = self.get_active_interface()
+        if interface is None:
+            logging.error("No active network interface found")
+            return False
+        
         try:
             resolv_conf = "/etc/resolv.conf"
             with open(resolv_conf, "w") as f:
