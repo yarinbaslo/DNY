@@ -84,7 +84,7 @@ class MacOSHandler(OSHandler):
         
     def notify(self, title: str, message: str, notification_type: str = "info",
                urgency: str = "normal", timeout: int = 5000) -> None:
-        """Send a system notification using osascript."""
+        """Send a system notification using terminal-notifier if available, otherwise osascript."""
         try:
             # Map notification type to sound
             sounds = {
@@ -95,27 +95,37 @@ class MacOSHandler(OSHandler):
             sound = sounds.get(notification_type, "Glass")
 
             # Escape special characters in title and message
-            title = title.replace('"', '\\"')
-            message = message.replace('"', '\\"')
+            title_escaped = title.replace('"', '\\"')
+            message_escaped = message.replace('"', '\\"')
 
-            # Create the AppleScript command
-            script = f'''
-            display notification "{message}" with title "{title}" sound name "{sound}"
-            '''
-            
-            # Execute the AppleScript
+            # Try terminal-notifier first
+            try:
+                result = subprocess.run([
+                    "terminal-notifier",
+                    "-title", title,
+                    "-message", message,
+                    "-sound", sound
+                ], capture_output=True, text=True)
+                if result.returncode == 0:
+                    logging.info(f"Notification sent with terminal-notifier: {title} - {message}")
+                    return
+                else:
+                    logging.warning(f"terminal-notifier failed: {result.stderr}")
+            except FileNotFoundError:
+                logging.info("terminal-notifier not found, falling back to osascript.")
+
+            # Fallback to AppleScript (osascript)
+            script = f'display notification "{message_escaped}" with title "{title_escaped}" sound name "{sound}"'
             result = subprocess.run(['osascript', '-e', script], 
                                  capture_output=True, 
                                  text=True, 
                                  check=True)
-            
             if result.stderr:
                 logging.warning(f"Notification warning: {result.stderr}")
-            
-            logging.info(f"Notification sent: {title} - {message}")
+            logging.info(f"Notification sent with osascript: {title} - {message}")
         except subprocess.CalledProcessError as e:
             logging.error(f"Failed to send notification: {str(e)}")
-            if e.stderr:
+            if hasattr(e, 'stderr') and e.stderr:
                 logging.error(f"Error details: {e.stderr}")
         except Exception as e:
             logging.error(f"Error sending notification: {str(e)}")

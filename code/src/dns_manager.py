@@ -25,13 +25,17 @@ class DNSManager:
             logging.error(error_msg)
             self.notification_manager.notify_dns_error(error_msg)
             return
+        
+        else:
+            self.notification_manager.notify_dns_change(self.local_dns, "127.0.0.1")
 
         # Create resolver and server instances
         resolver = DNSResolver(
             primary_dns=self.local_dns,
             primary_port=self.local_port,
             fallback_dns=self.google_dns,
-            fallback_port=self.google_port
+            fallback_port=self.google_port,
+            notification_manager=self.notification_manager
         )
 
         self.server = DNSServer(self.listen_port, resolver)
