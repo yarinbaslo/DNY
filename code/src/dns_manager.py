@@ -1,8 +1,8 @@
 import logging
-from .os_handlers.factory import OSHandlerFactory
-from .dns.resolver import DNSResolver
-from .dns.server import DNSServer
-from .notification_manager import NotificationManager
+from os_handlers.factory import OSHandlerFactory
+from dns.resolver import DNSResolver
+from dns.server import DNSServer
+from notification_manager import NotificationManager
 
 class DNSManager:
     def __init__(self):
@@ -13,7 +13,7 @@ class DNSManager:
         self.google_port = 53
         self.listen_port = 53
         self.server = None
-        self.notification_manager = NotificationManager()
+        self.notification_manager = NotificationManager(self.os_handler)
 
     def start(self):
         """

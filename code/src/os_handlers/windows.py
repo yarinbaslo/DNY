@@ -2,9 +2,32 @@ import psutil
 import subprocess
 import re
 import logging
+import os
+import platform
 from .base import OSHandler
 
 class WindowsHandler(OSHandler):
+    def __init__(self):
+        super().__init__()
+        self.toaster = None
+        self.icons = {}
+        if platform.system().lower() == 'windows':
+            try:
+                from win10toast import ToastNotifier
+                self.toaster = ToastNotifier()
+                self._setup_icons()
+            except ImportError:
+                logging.warning("win10toast not available, notifications will be logged only")
+
+    def _setup_icons(self):
+        """Setup notification icons based on notification type."""
+        if platform.system().lower() == 'windows':
+            self.icons = {
+                "info": os.path.join(os.path.dirname(__file__), "icons", "info.ico"),
+                "warning": os.path.join(os.path.dirname(__file__), "icons", "warning.ico"),
+                "error": os.path.join(os.path.dirname(__file__), "icons", "error.ico")
+            }
+
     def get_local_dns(self) -> str:
         try:
             output = subprocess.check_output(['ipconfig', '/all'], encoding='utf-8', errors='ignore')
@@ -55,3 +78,37 @@ class WindowsHandler(OSHandler):
 
         logging.info(f"Successfully set DNS to {dns_ip} on Windows for interface {interface}")
         return True
+    
+    def notify(self, title: str, message: str, notification_type: str = "info",
+               urgency: str = "normal", timeout: int = 5000) -> None:
+        """Send a system notification using win10toast on Windows, or log on other platforms."""
+        try:
+            if platform.system().lower() == 'windows' and self.toaster:
+                # Convert timeout from milliseconds to seconds
+                timeout_sec = timeout // 1000
+                
+                # Get icon path if available
+                icon_path = self.icons.get(notification_type)
+                
+                # Show the notification
+                self.toaster.show_toast(
+                    title,
+                    message,
+                    icon_path=icon_path,
+                    duration=timeout_sec,
+                    threaded=True  # Run in a separate thread to not block
+                )
+                logging.info(f"Notification sent: {title} - {message}")
+            else:
+                # On non-Windows platforms, just log the notification
+                log_level = {
+                    "info": logging.INFO,
+                    "warning": logging.WARNING,
+                    "error": logging.ERROR
+                }.get(notification_type, logging.INFO)
+                
+                logging.log(log_level, f"{title}: {message}")
+        except Exception as e:
+            logging.error(f"Error sending notification: {str(e)}")
+            # Fallback to basic logging
+            logging.info(f"{title}: {message}")

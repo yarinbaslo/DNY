@@ -59,3 +59,39 @@ class LinuxHandler(OSHandler):
         except Exception as e:
             logging.error(f"Failed to set DNS on Linux: {str(e)}")
             return False 
+        
+    def notify(self, title: str, message: str, notification_type: str = "info",
+               urgency: str = "normal", timeout: int = 5000) -> None:
+        """Send a system notification using notify-send."""
+        try:
+            # Map notification type to urgency if not explicitly set
+            if urgency == "normal":
+                urgency = "normal" if notification_type == "info" else "critical" if notification_type == "error" else "low"
+
+            # Convert timeout from milliseconds to seconds
+            timeout_sec = timeout // 1000
+
+            # Build the command
+            cmd = [
+                "notify-send",
+                title,
+                message,
+                f"--urgency={urgency}",
+                f"--expire-time={timeout_sec}",
+            ]
+
+            # Add icon based on notification type
+            icons = {
+                "info": "dialog-information",
+                "warning": "dialog-warning",
+                "error": "dialog-error"
+            }
+            if notification_type in icons:
+                cmd.extend(["--icon", icons[notification_type]])
+
+            subprocess.run(cmd, check=True)
+            logging.info(f"Notification sent: {title} - {message}")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to send notification: {str(e)}")
+        except Exception as e:
+            logging.error(f"Error sending notification: {str(e)}")

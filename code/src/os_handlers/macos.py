@@ -81,3 +81,41 @@ class MacOSHandler(OSHandler):
         except Exception as e:
             logging.error(f"Unexpected error setting DNS on macOS: {str(e)}")
             return False 
+        
+    def notify(self, title: str, message: str, notification_type: str = "info",
+               urgency: str = "normal", timeout: int = 5000) -> None:
+        """Send a system notification using osascript."""
+        try:
+            # Map notification type to sound
+            sounds = {
+                "info": "Glass",
+                "warning": "Basso",
+                "error": "Funk"
+            }
+            sound = sounds.get(notification_type, "Glass")
+
+            # Escape special characters in title and message
+            title = title.replace('"', '\\"')
+            message = message.replace('"', '\\"')
+
+            # Create the AppleScript command
+            script = f'''
+            display notification "{message}" with title "{title}" sound name "{sound}"
+            '''
+            
+            # Execute the AppleScript
+            result = subprocess.run(['osascript', '-e', script], 
+                                 capture_output=True, 
+                                 text=True, 
+                                 check=True)
+            
+            if result.stderr:
+                logging.warning(f"Notification warning: {result.stderr}")
+            
+            logging.info(f"Notification sent: {title} - {message}")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to send notification: {str(e)}")
+            if e.stderr:
+                logging.error(f"Error details: {e.stderr}")
+        except Exception as e:
+            logging.error(f"Error sending notification: {str(e)}")

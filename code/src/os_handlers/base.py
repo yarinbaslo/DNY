@@ -22,3 +22,18 @@ class OSHandler(ABC):
     def configure_local_dns(self, dns_ip: str = "127.0.0.1") -> bool:
         """Configure DNS settings for the system."""
         return self.set_dns(dns_ip) 
+    
+    @abstractmethod
+    def notify(self, title: str, message: str, notification_type: str = "info", 
+               urgency: str = "normal", timeout: int = 5000) -> None:
+        """
+        Send a system notification.
+        
+        Args:
+            title: Notification title
+            message: Notification message
+            notification_type: Type of notification (info, warning, error)
+            urgency: Notification urgency (low, normal, critical)
+            timeout: Notification timeout in milliseconds
+        """
+        pass

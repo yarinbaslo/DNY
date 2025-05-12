@@ -1,5 +1,5 @@
 import logging
-from dns_forwarder import DNSForwarder
+from dns_manager import DNSManager
 
 def main():
     # Configure logging
@@ -9,7 +9,7 @@ def main():
     )
 
     # Create and start DNS forwarder
-    forwarder = DNSForwarder()
+    forwarder = DNSManager()
     try:
         forwarder.start()
     except KeyboardInterrupt:
