@@ -56,29 +56,54 @@ class WindowsHandler(OSHandler):
         except Exception as e:
             logging.error(f"Error getting active interface on Windows: {str(e)}")
             return None
-
-    def set_dns(self, dns_ip: str = "127.0.0.1") -> bool:
-     
+    
+    def set_dns(self, dns_ips: list = ["127.0.0.1"]) -> bool:
         interface = self.get_active_interface()
         if interface is None:
             logging.error("No active network interface found")
             return False
-        
+
         try:
-            # Change DNS server to 127.0.0.1 for the given interface using netsh
+            # Set the first DNS IP as static
             subprocess.run(
-                f'netsh interface ipv4 set dns name="{interface}" static {dns_ip}',
+                f'netsh interface ipv4 set dns name="{interface}" static {dns_ips[0]}',
                 shell=True,
                 check=True
             )
-            print(f"DNS for {interface} set to localhost (127.0.0.1)")
+            logging.info(f"Primary DNS for {interface} set to {dns_ips[0]}")
+
+            # Add any additional DNS IPs as alternates
+            for dns_ip in dns_ips[1:]:
+                subprocess.run(
+                    f'netsh interface ipv4 add dns name="{interface}" {dns_ip} index=2',
+                    shell=True,
+                    check=True
+                )
+                logging.info(f"Secondary DNS for {interface} set to {dns_ip}")
+            
+            return True
         except subprocess.CalledProcessError as e:
             logging.error(f"Failed to set DNS: {e}")
             return False
 
-        logging.info(f"Successfully set DNS to {dns_ip} on Windows for interface {interface}")
-        return True
-    
+    def restore_dns_to_dhcp(self) -> bool:
+        interface = self.get_active_interface()
+        if interface is None:
+            logging.error("No active network interface found")
+            return False
+
+        try:
+            subprocess.run(
+                f'netsh interface ipv4 set dns name="{interface}" source=dhcp',
+                shell=True,
+                check=True
+            )
+            logging.info(f"Successfully restored DNS to DHCP on interface {interface}")
+            return True
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to restore DNS to DHCP: {e}")
+            return False
+
     def notify(self, title: str, message: str, notification_type: str = "info",
                urgency: str = "normal", timeout: int = 5000) -> None:
         """Send a system notification using win10toast on Windows, or log on other platforms."""
