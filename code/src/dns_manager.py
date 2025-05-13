@@ -20,14 +20,14 @@ class DNSManager:
         Starts the DNS forwarder service
         """
         # Configure system DNS
-        if not self.os_handler.configure_local_dns():
+        if not self.os_handler.configure_local_dns(dns_ips=["127.0.0.1", self.local_dns]):
             error_msg = "Failed to configure system DNS settings"
             logging.error(error_msg)
             self.notification_manager.notify_dns_error(error_msg)
             return
-        
         else:
             self.notification_manager.notify_dns_change(self.local_dns, "127.0.0.1")
+
 
         # Create resolver and server instances
         resolver = DNSResolver(
@@ -57,14 +57,14 @@ class DNSManager:
         if self.server:
             self.server.stop()
             self.server = None
-            
-            # Configure system DNS
-            if not self.os_handler.configure_local_dns(self.local_dns):
-                error_msg = "Failed to restore system DNS settings"
+
+            # Restore system DNS to automatic (DHCP)
+            if not self.os_handler.restore_dns_to_dhcp():
+                error_msg = "Failed to restore system DNS settings to automatic (DHCP)"
                 logging.error(error_msg)
                 self.notification_manager.notify_dns_error(error_msg)
             else:
-                self.notification_manager.notify_dns_change("127.0.0.1", self.local_dns)
-            
+                self.notification_manager.notify_dns_change("127.0.0.1", "DHCP")
+
             # Notify about service stop
-            self.notification_manager.notify_service_status("Stopped") 
+            self.notification_manager.notify_service_status("Stopped")
