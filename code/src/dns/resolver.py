@@ -6,15 +6,20 @@ import time
 from dns_cache import DNSCache
 
 class DNSResolver:
-    def __init__(self, primary_dns, primary_port, fallback_dns, fallback_port):
+    def __init__(self, primary_dns, primary_port, fallback_dns, fallback_port, notification_manager ):
         self.primary_dns = primary_dns
         self.primary_port = primary_port
         self.fallback_dns = fallback_dns
         self.fallback_port = fallback_port
         self.ip_blocker = IPBlocker()
         self.cache = DNSCache(max_size=1000, ttl=300)  # 5 minutes TTL for cached responses
+        self.notification_manager = notification_manager
 
     def resolve(self, query_data):
+        """
+        Attempts to resolve a DNS query using cache then primary DNS first, then falls back to secondary DNS
+        Returns the response data if successful, None if both attempts fail
+        """
         cached_response = self.cache.get(query_data)
         if cached_response:
             logging.info("Cache hit for DNS query.")
@@ -29,9 +34,10 @@ class DNSResolver:
         # Try fallback DNS if primary fails
         response = self._try_resolve(query_data, self.fallback_dns, self.fallback_port, is_primary=False)
         if response:
+            self.notification_manager.notify_dns_error("Primary DNS failed to resolve query")
             self.cache.set(query_data, response)
             return response
-
+            
         return None
 
 
@@ -54,6 +60,8 @@ class DNSResolver:
                     # Extract and validate IP addresses from the response
                     if self._validate_response_ips(response_data):
                         logging.info(f"{'Primary' if is_primary else 'Fallback'} DNS resolved query ID: {query_id}")
+                        if not is_primary:
+                            self.notification_manager.notify_dns_change(self.primary_dns, dns_server)
                         return response_data
                     else:
                         logging.warning(f"Blocked IP detected in response for query ID: {query_id}")
