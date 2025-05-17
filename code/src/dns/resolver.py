@@ -2,6 +2,7 @@ import socket
 import struct
 import logging
 from ip_blocker import IPBlocker
+from content_checker import ContentChecker
 
 class DNSResolver:
     def __init__(self, primary_dns, primary_port, fallback_dns, fallback_port, notification_manager):
@@ -11,6 +12,11 @@ class DNSResolver:
         self.fallback_port = fallback_port
         self.ip_blocker = IPBlocker()
         self.notification_manager = notification_manager
+        self.content_checker = ContentChecker()
+
+    def set_content_check_api_key(self, api_key: str) -> None:
+        """Set the API key for content checking."""
+        self.content_checker.set_api_key(api_key)
 
     def resolve(self, query_data):
         """
@@ -26,7 +32,19 @@ class DNSResolver:
             self.notification_manager.notify_dns_error("Primary DNS failed to resolve query")
 
         # Try fallback DNS
-        return self._try_resolve(query_data, self.fallback_dns, self.fallback_port, is_primary=False)
+        response = self._try_resolve(query_data, self.fallback_dns, self.fallback_port, is_primary=False)
+        
+        if response:
+            # Extract domain from query for content checking
+            domain_parts = self._extract_domain_name(query_data, 12)  # Start after DNS header
+            if domain_parts:
+                domain = '.'.join(domain_parts)
+                is_appropriate, reason = self.content_checker.check_domain(domain)
+                if not is_appropriate:
+                    self.notification_manager.notify_domain_blocked(domain, reason)
+                    return None
+                
+        return response
 
     def _try_resolve(self, query_data, dns_server, port, is_primary):
         """
