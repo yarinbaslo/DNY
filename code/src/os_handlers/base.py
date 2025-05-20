@@ -17,12 +17,13 @@ class OSHandler(ABC):
     @abstractmethod
     def set_dns(self, dns_ip: str = "127.0.0.1") -> bool:
         """Set DNS server for the system."""
-        pass
-
-    def configure_local_dns(self, dns_ip: str = "127.0.0.1") -> bool:
-        """Configure DNS settings for the system."""
-        return self.set_dns(dns_ip) 
+        pass 
     
+    def configure_local_dns(self, dns_ips: list = ["127.0.0.1"]) -> bool:
+        """Configure DNS settings for the system."""
+        return self.set_dns(dns_ips)
+
+
     @abstractmethod
     def notify(self, title: str, message: str, notification_type: str = "info", 
                urgency: str = "normal", timeout: int = 5000) -> None:
