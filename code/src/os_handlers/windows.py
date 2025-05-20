@@ -27,13 +27,19 @@ class WindowsHandler(OSHandler):
                 "warning": os.path.join(os.path.dirname(__file__), "icons", "warning.ico"),
                 "error": os.path.join(os.path.dirname(__file__), "icons", "error.ico")
             }
-
-    def get_local_dns(self) -> str:
+    
+    def get_local_dns(self, _retry=False) -> str:
         try:
             output = subprocess.check_output(['ipconfig', '/all'], encoding='utf-8', errors='ignore')
             matches = re.findall(r'DNS Servers[^\d]*(\d+\.\d+\.\d+\.\d+)', output)
             if matches:
                 dns = matches[0]
+                if dns == '127.0.0.1' and not _retry:
+                    logging.warning("Detected DNS is 127.0.0.1. Attempting to restore DNS to DHCP.")
+                    if self.restore_dns_to_dhcp():
+                        import time
+                        time.sleep(2)  # allow DHCP settings to apply
+                        return self.get_local_dns(_retry=True)
                 logging.info("Found local DNS from ipconfig: %s", dns)
                 return dns
         except Exception as e:
