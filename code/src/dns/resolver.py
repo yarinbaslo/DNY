@@ -2,31 +2,57 @@ import socket
 import struct
 import logging
 from ip_blocker import IPBlocker
+from content_checker import ContentChecker
+import time
+from dns_cache import DNSCache
 
 class DNSResolver:
-    def __init__(self, primary_dns, primary_port, fallback_dns, fallback_port, notification_manager):
+    def __init__(self, primary_dns, primary_port, fallback_dns, fallback_port, notification_manager ):
         self.primary_dns = primary_dns
         self.primary_port = primary_port
         self.fallback_dns = fallback_dns
         self.fallback_port = fallback_port
         self.ip_blocker = IPBlocker()
+        self.cache = DNSCache(max_size=1000, ttl=300)  # 5 minutes TTL for cached responses
         self.notification_manager = notification_manager
+        self.content_checker = ContentChecker()
+
+    def set_content_check_api_key(self, api_key: str) -> None:
+        """Set the API key for content checking."""
+        self.content_checker.set_api_key(api_key)
 
     def resolve(self, query_data):
         """
-        Attempts to resolve a DNS query using primary DNS first, then falls back to secondary DNS
+        Attempts to resolve a DNS query using cache then primary DNS first, then falls back to secondary DNS
         Returns the response data if successful, None if both attempts fail
         """
+        cached_response = self.cache.get(query_data)
+        if cached_response:
+            logging.info("Cache hit for DNS query.")
+            return cached_response
+
         # Try primary DNS first
         response = self._try_resolve(query_data, self.primary_dns, self.primary_port, is_primary=True)
         if response:
+            self.cache.set(query_data, response)
             return response
-        
-        else:
-            self.notification_manager.notify_dns_error("Primary DNS failed to resolve query")
 
         # Try fallback DNS
-        return self._try_resolve(query_data, self.fallback_dns, self.fallback_port, is_primary=False)
+        response = self._try_resolve(query_data, self.fallback_dns, self.fallback_port, is_primary=False)
+        
+        if response:
+            # Extract domain from query for content checking
+            domain_parts = self._extract_domain_name(query_data, 12)  # Start after DNS header
+            if domain_parts:
+                domain = '.'.join(domain_parts)
+                is_appropriate, reason = self.content_checker.check_domain(domain)
+                if not is_appropriate:
+                    self.notification_manager.notify_domain_blocked(domain, reason)
+
+            self.cache.set(query_data, response)
+
+        return response
+
 
     def _try_resolve(self, query_data, dns_server, port, is_primary):
         """
@@ -35,6 +61,7 @@ class DNSResolver:
         query_id = struct.unpack('!H', query_data[:2])[0]
         dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         dns_socket.settimeout(10)  # Set a reasonable timeout of 5 seconds
+
 
         try:
             dns_socket.sendto(query_data, (dns_server, port))
@@ -46,7 +73,6 @@ class DNSResolver:
                     # Extract and validate IP addresses from the response
                     if self._validate_response_ips(response_data):
                         logging.info(f"{'Primary' if is_primary else 'Fallback'} DNS resolved query ID: {query_id}")
-
                         if not is_primary:
                             self.notification_manager.notify_dns_change(self.primary_dns, dns_server)
                         return response_data
@@ -64,6 +90,7 @@ class DNSResolver:
             dns_socket.close()
 
     def _validate_response_ips(self, response_data):
+        
         """
         Validates IP addresses in the DNS response against blocking rules
         Returns True if all IPs are valid, False if any are blocked
@@ -222,5 +249,4 @@ class DNSResolver:
                     # If it's not a compressed name, just skip this part
                     logging.debug(f"Could not decode name part at offset {current_offset}")
             current_offset += length
-            
         return name_parts 
