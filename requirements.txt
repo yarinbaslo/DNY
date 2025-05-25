@@ -1,5 +1,12 @@
-git add requirements.txt
-dnslib==0.9.23
 psutil==5.9.5
+requests
+openai
+beautifulsoup4
+# Testing dependencies
+pytest==7.4.3
+pytest-mock==3.12.0
+pytest-cov==4.1.0
 # Windows-specific packages (optional)
 win10toast==0.9; platform_system=="Windows"
+# Linux: notify-send (system package, not Python)
+# macOS: terminal-notifier (brew install terminal-notifier), osascript (built-in)

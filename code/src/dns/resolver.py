@@ -47,7 +47,7 @@ class DNSResolver:
                 domain = '.'.join(domain_parts)
                 is_appropriate, reason = self.content_checker.check_domain(domain)
                 if not is_appropriate:
-                    self.notification_manager.notify_domain_blocked(domain, reason)
+                    self.notification_manager.notify_domain_inappropriate_content(domain, reason)
 
             self.cache.set(query_data, response)
 
