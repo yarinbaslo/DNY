@@ -2,6 +2,9 @@ import socket
 import threading
 import logging
 from .resolver import DNSResolver
+from dnslib import DNSRecord
+from .db import log_dns_query
+
 
 class DNSServer:
     def __init__(self, listen_port, resolver):
@@ -25,11 +28,22 @@ class DNSServer:
             except Exception as e:
                 logging.error("Error in main loop: %s", str(e))
 
+    def extract_domain(data: bytes) -> str:
+        try:
+            dns_record = DNSRecord.parse(data)
+            return str(dns_record.q.qname)
+        except Exception:
+            return "unknown"
+                
+
     def _handle_query(self, data, client_address):
         """
         Handles an incoming DNS query
         """
         try:
+            domain = self.extract_domain(data)
+            client_ip = client_address[0]
+            log_dns_query(domain, client_ip)  # Log to DB
             response_data = self.resolver.resolve(data)
             if response_data:
                 self.socket.sendto(response_data, client_address)
