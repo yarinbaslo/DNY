@@ -7,11 +7,10 @@ import time
 from dns_cache import DNSCache
 
 class DNSResolver:
-    def __init__(self, primary_dns, primary_port, fallback_dns, fallback_port, notification_manager ):
+    def __init__(self, primary_dns, primary_port, fallback_dns_list, notification_manager):
         self.primary_dns = primary_dns
         self.primary_port = primary_port
-        self.fallback_dns = fallback_dns
-        self.fallback_port = fallback_port
+        self.fallback_dns_list = fallback_dns_list  # List of (dns_server, port) tuples
         self.ip_blocker = IPBlocker()
         self.cache = DNSCache(max_size=1000, ttl=300)  # 5 minutes TTL for cached responses
         self.notification_manager = notification_manager
@@ -23,8 +22,8 @@ class DNSResolver:
 
     def resolve(self, query_data):
         """
-        Attempts to resolve a DNS query using cache then primary DNS first, then falls back to secondary DNS
-        Returns the response data if successful, None if both attempts fail
+        Attempts to resolve a DNS query using cache then primary DNS first, then falls back to secondary DNS servers
+        Returns the response data if successful, None if all attempts fail
         """
         cached_response = self.cache.get(query_data)
         if cached_response:
@@ -37,22 +36,27 @@ class DNSResolver:
             self.cache.set(query_data, response)
             return response
 
-        # Try fallback DNS
-        response = self._try_resolve(query_data, self.fallback_dns, self.fallback_port, is_primary=False)
-        
-        if response:
-            # Extract domain from query for content checking
-            domain_parts = self._extract_domain_name(query_data, 12)  # Start after DNS header
-            if domain_parts:
-                domain = '.'.join(domain_parts)
-                is_appropriate, reason = self.content_checker.check_domain(domain)
-                if not is_appropriate:
-                    self.notification_manager.notify_domain_inappropriate_content(domain, reason)
+        # Try each fallback DNS server in order
+        for i, (fallback_dns, fallback_port) in enumerate(self.fallback_dns_list):
+            logging.info(f"Trying fallback DNS server {i+1}/{len(self.fallback_dns_list)}: {fallback_dns}")
+            response = self._try_resolve(query_data, fallback_dns, fallback_port, is_primary=False)
+            
+            if response:
+                # Extract domain from query for content checking
+                domain_parts = self._extract_domain_name(query_data, 12)  # Start after DNS header
+                if domain_parts:
+                    domain = '.'.join(domain_parts)
+                    is_appropriate, reason = self.content_checker.check_domain(domain)
+                    if not is_appropriate:
+                        self.notification_manager.notify_domain_inappropriate_content(domain, reason)
 
-            self.cache.set(query_data, response)
+                self.cache.set(query_data, response)
+                return response
+            else:
+                logging.warning(f"Fallback DNS server {fallback_dns} failed, trying next server...")
 
-        return response
-
+        logging.error("All DNS servers failed to resolve the query")
+        return None
 
     def _try_resolve(self, query_data, dns_server, port, is_primary):
         """
@@ -60,8 +64,7 @@ class DNSResolver:
         """
         query_id = struct.unpack('!H', query_data[:2])[0]
         dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        dns_socket.settimeout(10)  # Set a reasonable timeout of 5 seconds
-
+        dns_socket.settimeout(5)  # Set a reasonable timeout of 5 seconds
 
         try:
             dns_socket.sendto(query_data, (dns_server, port))
@@ -90,7 +93,6 @@ class DNSResolver:
             dns_socket.close()
 
     def _validate_response_ips(self, response_data):
-        
         """
         Validates IP addresses in the DNS response against blocking rules
         Returns True if all IPs are valid, False if any are blocked
