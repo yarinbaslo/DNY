@@ -1,7 +1,8 @@
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, mock_open
 import sys
 import os
+import json
 
 # Add the src directory to the path so we can import modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -62,12 +63,30 @@ class MockNotificationManager:
         self.notifications.append(("service_status", status, details))
 
 
+# Sample DNS list data for testing
+SAMPLE_DNS_LIST = [
+    {
+        "name": "Google Public DNS",
+        "primary": "8.8.8.8",
+        "secondary": "8.8.4.4",
+        "features": ["Fast", "Reliable", "Global availability"]
+    },
+    {
+        "name": "Cloudflare DNS",
+        "primary": "1.1.1.1",
+        "secondary": "1.0.0.1",
+        "features": ["Very fast", "Privacy-focused", "Global"]
+    }
+]
+
+
 class TestDNSManager:
     """Test cases for DNSManager class."""
 
     @patch('dns_manager.OSHandlerFactory.create_handler')
     @patch('dns_manager.NotificationManager')
-    def test_init(self, mock_notification_manager_class, mock_factory):
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_init(self, mock_file, mock_notification_manager_class, mock_factory):
         """Test DNSManager initialization."""
         mock_os_handler = MockOSHandler()
         mock_factory.return_value = mock_os_handler
@@ -79,17 +98,43 @@ class TestDNSManager:
         assert manager.os_handler == mock_os_handler
         assert manager.local_dns == "192.168.1.1"
         assert manager.local_port == 53
-        assert manager.google_dns == "8.8.8.8"
-        assert manager.google_port == 53
         assert manager.listen_port == 53
         assert manager.server is None
         assert manager.notification_manager == mock_notification_manager
+        # Check that fallback DNS list was loaded correctly 
+        expected_fallback = [
+            ('8.8.8.8', 53), ('8.8.4.4', 53),
+            ('1.1.1.1', 53), ('1.0.0.1', 53)
+        ]
+        assert manager.fallback_dns_list == expected_fallback
+
+    @patch('dns_manager.OSHandlerFactory.create_handler')
+    @patch('dns_manager.NotificationManager')
+    @patch('builtins.open', side_effect=FileNotFoundError())
+    def test_init_with_fallback_dns_list(self, mock_file, mock_notification_manager_class, mock_factory):
+        """Test DNSManager initialization when dns_list.json file is not found."""
+        mock_os_handler = MockOSHandler()
+        mock_factory.return_value = mock_os_handler
+        mock_notification_manager = MockNotificationManager(mock_os_handler)
+        mock_notification_manager_class.return_value = mock_notification_manager
+        
+        manager = DNSManager()
+        
+        # Should fall back to default DNS servers
+        expected_fallback = [
+            ('8.8.8.8', 53),      # Google Primary
+            ('8.8.4.4', 53),      # Google Secondary
+            ('1.1.1.1', 53),      # Cloudflare Primary
+            ('1.0.0.1', 53),      # Cloudflare Secondary
+        ]
+        assert manager.fallback_dns_list == expected_fallback
 
     @patch('dns_manager.OSHandlerFactory.create_handler')
     @patch('dns_manager.NotificationManager')
     @patch('dns_manager.DNSResolver')
     @patch('dns_manager.DNSServer')
-    def test_start_success(self, mock_dns_server_class, mock_dns_resolver_class, 
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_start_success(self, mock_file, mock_dns_server_class, mock_dns_resolver_class, 
                           mock_notification_manager_class, mock_factory):
         """Test successful DNS manager start."""
         # Setup mocks
@@ -110,15 +155,18 @@ class TestDNSManager:
         # Verify DNS configuration
         assert mock_os_handler.dns_configured is True
         
-        # Verify server creation and start
+        # Verify resolver creation with correct parameters
         mock_dns_resolver_class.assert_called_once_with(
             primary_dns="192.168.1.1",
             primary_port=53,
-            fallback_dns="8.8.8.8",
-            fallback_port=53,
+            fallback_dns_list=[
+                ('8.8.8.8', 53), ('8.8.4.4', 53),
+                ('1.1.1.1', 53), ('1.0.0.1', 53)
+            ],
             notification_manager=mock_notification_manager
         )
         
+        # Verify server creation and start
         mock_dns_server_class.assert_called_once_with(53, mock_resolver)
         assert mock_server.started is True
         assert manager.server == mock_server
@@ -131,7 +179,8 @@ class TestDNSManager:
 
     @patch('dns_manager.OSHandlerFactory.create_handler')
     @patch('dns_manager.NotificationManager')
-    def test_start_dns_config_failure(self, mock_notification_manager_class, mock_factory):
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_start_dns_config_failure(self, mock_file, mock_notification_manager_class, mock_factory):
         """Test DNS manager start with DNS configuration failure."""
         # Setup mocks
         mock_os_handler = MockOSHandler()
@@ -155,7 +204,8 @@ class TestDNSManager:
     @patch('dns_manager.NotificationManager')
     @patch('dns_manager.DNSResolver')
     @patch('dns_manager.DNSServer')
-    def test_stop_success(self, mock_dns_server_class, mock_dns_resolver_class,
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_stop_success(self, mock_file, mock_dns_server_class, mock_dns_resolver_class,
                          mock_notification_manager_class, mock_factory):
         """Test successful DNS manager stop."""
         # Setup mocks
@@ -192,7 +242,8 @@ class TestDNSManager:
 
     @patch('dns_manager.OSHandlerFactory.create_handler')
     @patch('dns_manager.NotificationManager')
-    def test_stop_no_server(self, mock_notification_manager_class, mock_factory):
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_stop_no_server(self, mock_file, mock_notification_manager_class, mock_factory):
         """Test DNS manager stop when no server is running."""
         # Setup mocks
         mock_os_handler = MockOSHandler()
@@ -210,7 +261,8 @@ class TestDNSManager:
     @patch('dns_manager.NotificationManager')
     @patch('dns_manager.DNSResolver')
     @patch('dns_manager.DNSServer')
-    def test_stop_dns_restore_failure(self, mock_dns_server_class, mock_dns_resolver_class,
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_stop_dns_restore_failure(self, mock_file, mock_dns_server_class, mock_dns_resolver_class,
                                      mock_notification_manager_class, mock_factory):
         """Test DNS manager stop with DNS restoration failure."""
         # Setup mocks
@@ -244,7 +296,8 @@ class TestDNSManager:
     @patch('dns_manager.NotificationManager')
     @patch('dns_manager.DNSResolver')
     @patch('dns_manager.DNSServer')
-    def test_start_stop_cycle(self, mock_dns_server_class, mock_dns_resolver_class,
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_start_stop_cycle(self, mock_file, mock_dns_server_class, mock_dns_resolver_class,
                              mock_notification_manager_class, mock_factory):
         """Test complete start-stop cycle."""
         # Setup mocks
@@ -275,7 +328,8 @@ class TestDNSManager:
     @patch('dns_manager.NotificationManager')
     @patch('dns_manager.DNSResolver')
     @patch('dns_manager.DNSServer')
-    def test_multiple_stops(self, mock_dns_server_class, mock_dns_resolver_class,
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_multiple_stops(self, mock_file, mock_dns_server_class, mock_dns_resolver_class,
                            mock_notification_manager_class, mock_factory):
         """Test multiple stop calls don't cause issues."""
         # Setup mocks
@@ -303,7 +357,8 @@ class TestDNSManager:
 
     @patch('dns_manager.OSHandlerFactory.create_handler')
     @patch('dns_manager.NotificationManager')
-    def test_default_configuration_values(self, mock_notification_manager_class, mock_factory):
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_default_configuration_values(self, mock_file, mock_notification_manager_class, mock_factory):
         """Test that default configuration values are set correctly."""
         mock_os_handler = MockOSHandler()
         mock_factory.return_value = mock_os_handler
@@ -314,15 +369,16 @@ class TestDNSManager:
         
         # Test default values
         assert manager.local_port == 53
-        assert manager.google_dns == "8.8.8.8"
-        assert manager.google_port == 53
         assert manager.listen_port == 53
+        assert isinstance(manager.fallback_dns_list, list)
+        assert len(manager.fallback_dns_list) > 0
 
     @patch('dns_manager.OSHandlerFactory.create_handler')
     @patch('dns_manager.NotificationManager')
     @patch('dns_manager.DNSResolver')
     @patch('dns_manager.DNSServer')
-    def test_resolver_configuration(self, mock_dns_server_class, mock_dns_resolver_class,
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_resolver_configuration(self, mock_file, mock_dns_server_class, mock_dns_resolver_class,
                                    mock_notification_manager_class, mock_factory):
         """Test that DNS resolver is configured correctly."""
         mock_os_handler = MockOSHandler()
@@ -343,8 +399,10 @@ class TestDNSManager:
         mock_dns_resolver_class.assert_called_once_with(
             primary_dns="192.168.1.1",
             primary_port=53,
-            fallback_dns="8.8.8.8",
-            fallback_port=53,
+            fallback_dns_list=[
+                ('8.8.8.8', 53), ('8.8.4.4', 53),
+                ('1.1.1.1', 53), ('1.0.0.1', 53)
+            ],
             notification_manager=mock_notification_manager
         )
 
@@ -352,7 +410,8 @@ class TestDNSManager:
     @patch('dns_manager.NotificationManager')
     @patch('dns_manager.DNSResolver')
     @patch('dns_manager.DNSServer')
-    def test_server_configuration(self, mock_dns_server_class, mock_dns_resolver_class,
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_server_configuration(self, mock_file, mock_dns_server_class, mock_dns_resolver_class,
                                  mock_notification_manager_class, mock_factory):
         """Test that DNS server is configured correctly."""
         mock_os_handler = MockOSHandler()
@@ -376,7 +435,8 @@ class TestDNSManager:
     @patch('dns_manager.NotificationManager')
     @patch('dns_manager.DNSResolver')
     @patch('dns_manager.DNSServer')
-    def test_notification_integration(self, mock_dns_server_class, mock_dns_resolver_class,
+    @patch('builtins.open', new_callable=mock_open, read_data=json.dumps(SAMPLE_DNS_LIST))
+    def test_notification_integration(self, mock_file, mock_dns_server_class, mock_dns_resolver_class,
                                      mock_notification_manager_class, mock_factory):
         """Test integration with notification manager."""
         mock_os_handler = MockOSHandler()
@@ -400,4 +460,25 @@ class TestDNSManager:
         # Stop and verify additional notifications
         manager.stop()
         stop_notifications = len(mock_notification_manager.notifications)
-        assert stop_notifications > start_notifications 
+        assert stop_notifications > start_notifications
+
+    @patch('dns_manager.OSHandlerFactory.create_handler')
+    @patch('dns_manager.NotificationManager')
+    @patch('builtins.open', new_callable=mock_open, read_data='invalid json')
+    def test_load_fallback_dns_list_invalid_json(self, mock_file, mock_notification_manager_class, mock_factory):
+        """Test fallback DNS list loading with invalid JSON."""
+        mock_os_handler = MockOSHandler()
+        mock_factory.return_value = mock_os_handler
+        mock_notification_manager = MockNotificationManager(mock_os_handler)
+        mock_notification_manager_class.return_value = mock_notification_manager
+        
+        manager = DNSManager()
+        
+        # Should fall back to default DNS servers on JSON parse error
+        expected_fallback = [
+            ('8.8.8.8', 53),      # Google Primary
+            ('8.8.4.4', 53),      # Google Secondary
+            ('1.1.1.1', 53),      # Cloudflare Primary
+            ('1.0.0.1', 53),      # Cloudflare Secondary
+        ]
+        assert manager.fallback_dns_list == expected_fallback 
