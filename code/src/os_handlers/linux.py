@@ -71,7 +71,7 @@ class LinuxHandler(OSHandler):
             # Convert timeout from milliseconds to seconds
             timeout_sec = timeout // 1000
 
-            # Build the command
+            # Build the command without icons
             cmd = [
                 "notify-send",
                 title,
@@ -79,15 +79,6 @@ class LinuxHandler(OSHandler):
                 f"--urgency={urgency}",
                 f"--expire-time={timeout_sec}",
             ]
-
-            # Add icon based on notification type
-            icons = {
-                "info": "dialog-information",
-                "warning": "dialog-warning",
-                "error": "dialog-error"
-            }
-            if notification_type in icons:
-                cmd.extend(["--icon", icons[notification_type]])
 
             subprocess.run(cmd, check=True)
             logging.info(f"Notification sent: {title} - {message}")
