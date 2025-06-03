@@ -77,10 +77,10 @@ class NotificationManager:
             "info"
         ) 
 
-    def notify_domain_blocked(self, domain, reason):
-        """Send notification when a domain is blocked."""
+    def notify_domain_inappropriate_content(self, domain, reason):
+        """Send notification when a domain is flagged for inappropriate content."""
         self.notify(
-            "Domain Blocked",
-            "The domain %s has been blocked.\nReason: %s" % (domain, reason),
+            "Inappropriate Content Alert",
+            f"The domain {domain} was flagged for inappropriate content.\nReason: {reason}",
             "warning"
         )
