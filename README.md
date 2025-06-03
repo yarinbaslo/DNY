@@ -1,4 +1,4 @@
-# DNY - Dynamic Domain Name for You
+<img width="613" alt="image" src="https://github.com/user-attachments/assets/3b49425b-9ec7-4faf-8f6f-01da7dafe80f" /># DNY - Dynamic Domain Name for You
 
 DNY is a cutting-edge tool that dynamically manages DNS resolution to provide seamless, automated access to websites blocked due to DNS restrictions. The tool identifies DNS-related blocks, dynamically switches to an alternative DNS provider, and ensures an ethical browsing experience by analyzing site content. It operates transparently, requiring zero technical expertise from users.
 
@@ -45,3 +45,14 @@ DNY dynamically changes DNS configurations only for blocked or inaccessible doma
 
 6. **Cross-Platform Support**  
    - Designed to work on Windows, macOS, and Linux.
+  
+### Competitive Analysis
+
+| Solution | Automation | System-Wide | Speed | Ease of Use | Our Advantage |
+|----------|------------|-------------|-------|-------------|---------------|
+| Manual DNS | No | Yes | Fast | Complex | Full automation |
+| Browser Extensions | Limited | No | Medium | Easy | System-wide coverage |
+| VPN Services | Yes | Yes | Slow | Easy | DNS-specific, faster |
+| DNS Changers | Partial | Yes | Fast | Medium | Intelligent detection |
+| **DNY** | **Full** | **Yes** | **Fast** | **Easy** | **All combined** |
+
