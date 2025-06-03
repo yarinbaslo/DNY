@@ -16,8 +16,8 @@ DNY (Dynamic Domain Name for You) is an intelligent DNS tool that automatically 
 
 ### Docs
 
-1. **Ideation and Design**
-2. **Presentation**
+1. **[Ideation and Design](https://docs.google.com/document/d/1vMAOhPR4wX_nsEkNH9xgcRl6WmOqgszwer-hzn650JI/edit?usp=sharing)**
+2. **[Presentation](https://docs.google.com/presentation/d/1F_DLSVZwVGa7_q-rMZ16-xAPTyNCNhhdnK-z_AWPuOM/edit?usp=sharing)**
 
 ---
 
