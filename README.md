@@ -104,7 +104,5 @@ DNY/
 
 ## 📖 Documentation
 
-- [Installation Guide](docs/installation.md)
-- [Configuration Reference](docs/configuration.md)
-- [API Documentation](docs/api.md)
-- [Troubleshooting](docs/troubleshooting.md)
+- [Abstract idea & High Level Architecture](https://docs.google.com/document/d/1vMAOhPR4wX_nsEkNH9xgcRl6WmOqgszwer-hzn650JI/edit?usp=sharing)
+- [Presentation](https://docs.google.com/presentation/d/1wM4SkH57ZGyopNIGB6XlzAySyPkkMxcDJZOvJLJsQ7A/edit?usp=sharing)
