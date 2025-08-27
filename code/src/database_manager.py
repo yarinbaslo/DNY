@@ -183,7 +183,7 @@ class DatabaseManager:
             return None
     
     def dns_query(self, domain_name: str, dns_server_ip: str, cache_hit: bool, 
-                     response_time_ms: int, is_blocked: bool = False):
+                     is_blocked: bool = False):
         """
         Log a DNS query to the database
         
@@ -191,7 +191,6 @@ class DatabaseManager:
             domain_name: The domain being queried
             dns_server_ip: IP of the DNS server that responded
             cache_hit: Whether this was a cache hit
-            response_time_ms: Response time in milliseconds
             is_blocked: Whether the query was blocked
         """
         if not self.current_connection_id:
@@ -212,12 +211,11 @@ class DatabaseManager:
             cursor = connection.cursor()
             cursor.execute("""
                 INSERT INTO user_query 
-                (dns_server_ip, cache_hit, query_response_time, domain, connection_id, is_blocked)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                (dns_server_ip, cache_hit, domain, connection_id, is_blocked)
+                VALUES (%s, %s, %s, %s, %s)
             """, (
                 dns_server_ip,
                 cache_hit,
-                response_time_ms,
                 domain_id,
                 self.current_connection_id,
                 is_blocked
@@ -229,29 +227,6 @@ class DatabaseManager:
         except mysql.connector.Error as err:
             logging.error(f"Error logging DNS query: {err}")
     
-    # why?
-    def update_domain_category(self, domain_name: str, category: str, is_unethical: bool = False):
-        """Update domain categorization"""
-        connection = self._ensure_connection()
-        if not connection:
-            return
-        
-        try:
-            cursor = connection.cursor()
-            cursor.execute("""
-                UPDATE domains 
-                SET category = %s, is_unethical = %s 
-                WHERE domain = %s
-            """, (category, is_unethical, domain_name))
-            
-            if cursor.rowcount > 0:
-                logging.debug(f"Updated domain {domain_name} category to {category}")
-            
-            cursor.close()
-            
-        except mysql.connector.Error as err:
-            logging.error(f"Error updating domain category: {err}")
-
     def end_user_session(self):
         """End the current user session"""
         if not self.current_connection_id:

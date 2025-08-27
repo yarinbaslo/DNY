@@ -6,6 +6,7 @@ from dns.resolver import DNSResolver
 from dns.server import DNSServer
 from notification_manager import NotificationManager
 from config import Config
+from database_manager import DatabaseManager
 
 class DNSManager:
     def __init__(self):
@@ -19,6 +20,16 @@ class DNSManager:
         self.timeout = dns_config['timeout']
         self.max_cache_size = dns_config['max_cache_size']
         self.cache_ttl = dns_config['cache_ttl']
+        
+        # Initialize database manager
+        db_config = Config.get_database_config()
+        self.database_manager = DatabaseManager(
+            host=db_config['host'],
+            port=db_config['port'],
+            database=db_config['database'],
+            user=db_config['user'],
+            password=db_config['password']
+        )
         
         self.server = None
         self.notification_manager = NotificationManager(self.os_handler)
@@ -73,6 +84,7 @@ class DNSManager:
             primary_port=self.local_port,
             fallback_dns_list=self.fallback_dns_list,
             notification_manager=self.notification_manager,
+            database_manager=self.database_manager,
             timeout=self.timeout,
             max_cache_size=self.max_cache_size,
             cache_ttl=self.cache_ttl
@@ -112,3 +124,7 @@ class DNSManager:
 
             # Notify about service stop
             self.notification_manager.notify_service_status("Stopped")
+        
+        # Close database connection
+        if self.database_manager:
+            self.database_manager.close()
