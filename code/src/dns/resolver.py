@@ -7,18 +7,16 @@ import time
 from dns_cache import DNSCache
 
 class DNSResolver:
-    def __init__(self, primary_dns, primary_port, fallback_dns_list, notification_manager):
+    def __init__(self, primary_dns, primary_port, fallback_dns_list, notification_manager, 
+                 timeout=5, max_cache_size=1000, cache_ttl=300):
         self.primary_dns = primary_dns
         self.primary_port = primary_port
         self.fallback_dns_list = fallback_dns_list  # List of (dns_server, port) tuples
+        self.timeout = timeout
         self.ip_blocker = IPBlocker()
-        self.cache = DNSCache(max_size=1000, ttl=300)  # 5 minutes TTL for cached responses
+        self.cache = DNSCache(max_size=max_cache_size, ttl=cache_ttl)
         self.notification_manager = notification_manager
         self.content_checker = ContentChecker()
-
-    def set_content_check_api_key(self, api_key: str) -> None:
-        """Set the API key for content checking."""
-        self.content_checker.set_api_key(api_key)
 
     def resolve(self, query_data):
         """
@@ -46,7 +44,8 @@ class DNSResolver:
                 domain_parts = self._extract_domain_name(query_data, 12)  # Start after DNS header
                 if domain_parts:
                     domain = '.'.join(domain_parts)
-                    is_appropriate, reason = self.content_checker.check_domain(domain)
+                    is_appropriate, reason, category = self.content_checker.check_domain(domain)
+                    logging.info(f"Domain analysis for {domain}: category={category}, appropriate={is_appropriate}")
                     if not is_appropriate:
                         self.notification_manager.notify_domain_inappropriate_content(domain, reason)
 
@@ -64,7 +63,7 @@ class DNSResolver:
         """
         query_id = struct.unpack('!H', query_data[:2])[0]
         dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        dns_socket.settimeout(5)  # Set a reasonable timeout of 5 seconds
+        dns_socket.settimeout(self.timeout)
 
         try:
             dns_socket.sendto(query_data, (dns_server, port))
