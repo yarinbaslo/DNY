@@ -1,13 +1,15 @@
 import socket
 import struct
 import logging
+import time
 from ip_blocker import IPBlocker
 from content_checker import ContentChecker
-import time
 from dns_cache import DNSCache
+from database_manager import DatabaseManager
+from config import DATABASE_CONFIG, get_system_info
 
 class DNSResolver:
-    def __init__(self, primary_dns, primary_port, fallback_dns_list, notification_manager):
+    def __init__(self, primary_dns, primary_port, fallback_dns_list, notification_manager, network_session_info=None):
         self.primary_dns = primary_dns
         self.primary_port = primary_port
         self.fallback_dns_list = fallback_dns_list  # List of (dns_server, port) tuples
@@ -15,6 +17,20 @@ class DNSResolver:
         self.cache = DNSCache(max_size=1000, ttl=300)  # 5 minutes TTL for cached responses
         self.notification_manager = notification_manager
         self.content_checker = ContentChecker()
+        
+        # Use network session from DNS manager if provided
+        if network_session_info:
+            self.db_manager = network_session_info['db_manager']
+            self.user_id = network_session_info['user_id']
+            self.connection_id = network_session_info['connection_id']
+            logging.info(f"Using network session - User ID: {self.user_id}, Connection ID: {self.connection_id}")
+        else:
+            # Fallback: initialize database manager directly (for testing)
+            self.db_manager = DatabaseManager(**DATABASE_CONFIG)
+            self.user_id = None
+            self.connection_id = None
+            self._own_db_manager = True  # Mark that we created our own
+            logging.warning("No network session provided, database logging may not work properly")
 
     def set_content_check_api_key(self, api_key: str) -> None:
         """Set the API key for content checking."""
@@ -25,15 +41,27 @@ class DNSResolver:
         Attempts to resolve a DNS query using cache then primary DNS first, then falls back to secondary DNS servers
         Returns the response data if successful, None if all attempts fail
         """
+        start_time = time.time()
+        domain_parts = self._extract_domain_name(query_data, 12)  # Start after DNS header
+        domain = '.'.join(domain_parts) if domain_parts else "unknown"
+        
+        # Check cache first
         cached_response = self.cache.get(query_data)
         if cached_response:
             logging.info("Cache hit for DNS query.")
+            # Log cache hit to database
+            if self.connection_id and self.user_id:
+                self._log_query_to_db("127.0.0.1", True, 0, domain, False)
             return cached_response
 
         # Try primary DNS first
         response = self._try_resolve(query_data, self.primary_dns, self.primary_port, is_primary=True)
         if response:
+            response_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
             self.cache.set(query_data, response)
+            # Log successful primary DNS resolution to database
+            if self.connection_id and self.user_id:
+                self._log_query_to_db(self.primary_dns, False, response_time, domain, False)
             return response
 
         # Try each fallback DNS server in order
@@ -42,20 +70,26 @@ class DNSResolver:
             response = self._try_resolve(query_data, fallback_dns, fallback_port, is_primary=False)
             
             if response:
+                response_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
+                
                 # Extract domain from query for content checking
-                domain_parts = self._extract_domain_name(query_data, 12)  # Start after DNS header
                 if domain_parts:
-                    domain = '.'.join(domain_parts)
                     is_appropriate, reason = self.content_checker.check_domain(domain)
                     if not is_appropriate:
                         self.notification_manager.notify_domain_inappropriate_content(domain, reason)
 
                 self.cache.set(query_data, response)
+                # Log successful fallback DNS resolution to database
+                if self.connection_id and self.user_id:
+                    self._log_query_to_db(fallback_dns, False, response_time, domain, False)
                 return response
             else:
                 logging.warning(f"Fallback DNS server {fallback_dns} failed, trying next server...")
 
         logging.error("All DNS servers failed to resolve the query")
+        # Log failed query to database
+        if self.connection_id and self.user_id:
+            self._log_query_to_db("failed", False, int((time.time() - start_time) * 1000), domain, False)
         return None
 
     def _try_resolve(self, query_data, dns_server, port, is_primary):
@@ -252,3 +286,25 @@ class DNSResolver:
                     logging.debug(f"Could not decode name part at offset {current_offset}")
             current_offset += length
         return name_parts 
+
+    def _log_query_to_db(self, dns_server_ip: str, cache_hit: bool, query_response_time: int, 
+                         domain: str, is_blocked: bool):
+        """Helper method to log DNS query to database"""
+        try:
+            # Get or create domain in database
+            domain_id = self.db_manager.get_or_create_domain(domain)
+            if domain_id:
+                self.db_manager.log_dns_query(
+                    dns_server_ip, cache_hit, query_response_time, 
+                    domain_id, self.connection_id, is_blocked
+                )
+        except Exception as e:
+            logging.error(f"Failed to log query to database: {e}")
+
+    def close(self):
+        """Close database connection (only if not managed by DNS manager)"""
+        # Only close if we created our own database manager
+        if hasattr(self, '_own_db_manager') and self._own_db_manager:
+            if self.db_manager:
+                self.db_manager.end_user_connection(self.connection_id)
+                self.db_manager.close()
