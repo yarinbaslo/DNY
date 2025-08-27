@@ -103,7 +103,7 @@ class TestDNSResolver:
              patch.object(resolver, '_try_resolve', side_effect=[None, response_data]) as mock_try_resolve, \
              patch.object(resolver.cache, 'set') as mock_cache_set, \
              patch.object(resolver, '_extract_domain_name', return_value=["example", "com"]), \
-             patch.object(resolver.content_checker, 'check_domain', return_value=(True, "Safe")):
+             patch.object(resolver.content_checker, 'check_domain', return_value=(True, "Safe", "other")):
             
             result = resolver.resolve(query_data)
             
@@ -123,7 +123,7 @@ class TestDNSResolver:
              patch.object(resolver, '_try_resolve', side_effect=[None, response_data]), \
              patch.object(resolver.cache, 'set'), \
              patch.object(resolver, '_extract_domain_name', return_value=["malicious", "com"]), \
-             patch.object(resolver.content_checker, 'check_domain', return_value=(False, "Contains malware")):
+             patch.object(resolver.content_checker, 'check_domain', return_value=(False, "Contains malware", "malicious")):
             
             result = resolver.resolve(query_data)
             
@@ -386,7 +386,7 @@ class TestDNSResolver:
              patch.object(resolver, '_try_resolve', side_effect=[None, b"response"]), \
              patch.object(resolver.cache, 'set') as mock_cache_set, \
              patch.object(resolver, '_extract_domain_name', return_value=["safe", "com"]), \
-             patch.object(resolver.content_checker, 'check_domain', return_value=(True, "Safe domain")):
+             patch.object(resolver.content_checker, 'check_domain', return_value=(True, "Safe domain", "business")):
             
             result = resolver.resolve(query_data)
             

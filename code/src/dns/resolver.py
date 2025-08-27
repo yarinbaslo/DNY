@@ -7,18 +7,17 @@ import time
 from dns_cache import DNSCache
 
 class DNSResolver:
-    def __init__(self, primary_dns, primary_port, fallback_dns_list, notification_manager):
+    def __init__(self, primary_dns, primary_port, fallback_dns_list, notification_manager, 
+                 database_manager, timeout=5, max_cache_size=1000, cache_ttl=300):
         self.primary_dns = primary_dns
         self.primary_port = primary_port
         self.fallback_dns_list = fallback_dns_list  # List of (dns_server, port) tuples
+        self.timeout = timeout
         self.ip_blocker = IPBlocker()
-        self.cache = DNSCache(max_size=1000, ttl=300)  # 5 minutes TTL for cached responses
+        self.cache = DNSCache(max_size=max_cache_size, ttl=cache_ttl)
         self.notification_manager = notification_manager
         self.content_checker = ContentChecker()
-
-    def set_content_check_api_key(self, api_key: str) -> None:
-        """Set the API key for content checking."""
-        self.content_checker.set_api_key(api_key)
+        self.database_manager = database_manager
 
     def resolve(self, query_data):
         """
@@ -27,13 +26,15 @@ class DNSResolver:
         """
         cached_response = self.cache.get(query_data)
         if cached_response:
-            logging.info("Cache hit for DNS query.")
+            logging.info(f"Cache hit for DNS query.")
+            self._database_info(cached_response, "cache", True, False)
             return cached_response
 
         # Try primary DNS first
         response = self._try_resolve(query_data, self.primary_dns, self.primary_port, is_primary=True)
         if response:
             self.cache.set(query_data, response)
+            self._database_info(response, self.primary_dns, False, False)
             return response
 
         # Try each fallback DNS server in order
@@ -46,11 +47,14 @@ class DNSResolver:
                 domain_parts = self._extract_domain_name(query_data, 12)  # Start after DNS header
                 if domain_parts:
                     domain = '.'.join(domain_parts)
-                    is_appropriate, reason = self.content_checker.check_domain(domain)
+                    is_appropriate, reason, category = self.content_checker.check_domain(domain)
+                    logging.info(f"Domain analysis for {domain}: category={category}, appropriate={is_appropriate}")
                     if not is_appropriate:
                         self.notification_manager.notify_domain_inappropriate_content(domain, reason)
 
                 self.cache.set(query_data, response)
+                self._database_info_domain(domain, category, is_appropriate)
+                self._database_info(response, fallback_dns, False, False)
                 return response
             else:
                 logging.warning(f"Fallback DNS server {fallback_dns} failed, trying next server...")
@@ -64,7 +68,7 @@ class DNSResolver:
         """
         query_id = struct.unpack('!H', query_data[:2])[0]
         dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        dns_socket.settimeout(5)  # Set a reasonable timeout of 5 seconds
+        dns_socket.settimeout(self.timeout)
 
         try:
             dns_socket.sendto(query_data, (dns_server, port))
@@ -252,3 +256,17 @@ class DNSResolver:
                     logging.debug(f"Could not decode name part at offset {current_offset}")
             current_offset += length
         return name_parts 
+
+    def _database_info_dns_query(self, domain_name, dns_server_ip, cache_hit, is_blocked):
+        """
+        Logs DNS query information to the database
+        """
+        if self.database_manager:
+            self.database_manager.dns_query(domain_name, dns_server_ip, cache_hit, is_blocked)
+
+    def _database_info_domain(self, domain_name, category, is_unethical):
+        """
+        Logs domain information to the database
+        """
+        if self.database_manager:
+            self.database_manager.get_or_create_domain(domain_name, category, is_unethical)

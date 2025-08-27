@@ -116,19 +116,21 @@ class TestContentChecker:
         """Test domain checking without API key."""
         checker = ContentChecker()
         
-        is_safe, reason = checker.check_domain("example.com")
+        is_safe, reason, category = checker.check_domain("example.com")
         
         assert is_safe is True
         assert "Content checking disabled - no API key" in reason
+        assert category == "unknown"
 
     def test_check_domain_invalid_domain(self):
         """Test domain checking with invalid domain."""
         checker = ContentChecker()
         
-        is_safe, reason = checker.check_domain("invalid-domain")
+        is_safe, reason, category = checker.check_domain("invalid-domain")
         
         assert is_safe is True
         assert "Invalid domain format" in reason
+        assert category == "unknown"
 
     @patch('openai.ChatCompletion.create')
     def test_check_domain_with_api_key_success(self, mock_create):
@@ -142,14 +144,15 @@ class TestContentChecker:
         # Mock the response
         mock_response = Mock()
         mock_response.choices = [Mock()]
-        mock_response.choices[0].message.content = "Risk Level: low\nReason: Safe domain"
+        mock_response.choices[0].message.content = "Risk Level: low\nCategory: business\nReason: Safe domain"
         mock_create.return_value = mock_response
         
         with patch.object(checker, '_get_website_info', return_value="Safe website"):
-            is_safe, reason = checker.check_domain("example.com")
+            is_safe, reason, category = checker.check_domain("example.com")
         
         assert is_safe is True
         assert "Safe domain" in reason
+        assert category == "business"
 
     @patch('openai.ChatCompletion.create')
     def test_check_domain_high_risk(self, mock_create):
@@ -163,14 +166,15 @@ class TestContentChecker:
         # Mock the response
         mock_response = Mock()
         mock_response.choices = [Mock()]
-        mock_response.choices[0].message.content = "Risk Level: high\nReason: Contains malware"
+        mock_response.choices[0].message.content = "Risk Level: high\nCategory: malicious\nReason: Contains malware"
         mock_create.return_value = mock_response
         
         with patch.object(checker, '_get_website_info', return_value="Suspicious website"):
-            is_safe, reason = checker.check_domain("malicious.com")
+            is_safe, reason, category = checker.check_domain("malicious.com")
         
         assert is_safe is False
         assert "Contains malware" in reason
+        assert category == "malicious"
 
     @patch('openai.ChatCompletion.create')
     def test_check_domain_timeout(self, mock_create):
@@ -185,10 +189,11 @@ class TestContentChecker:
         mock_create.side_effect = openai.error.Timeout("Request timed out")
         
         with patch.object(checker, '_get_website_info', return_value="Website info"):
-            is_safe, reason = checker.check_domain("example.com")
+            is_safe, reason, category = checker.check_domain("example.com")
         
         assert is_safe is True
         assert "Content check timed out" in reason
+        assert category == "unknown"
 
     @patch('openai.ChatCompletion.create')
     def test_check_domain_rate_limit(self, mock_create):
@@ -203,10 +208,11 @@ class TestContentChecker:
         mock_create.side_effect = openai.error.RateLimitError("Rate limit exceeded")
         
         with patch.object(checker, '_get_website_info', return_value="Website info"):
-            is_safe, reason = checker.check_domain("example.com")
+            is_safe, reason, category = checker.check_domain("example.com")
         
         assert is_safe is True
         assert "Content check rate limited" in reason
+        assert category == "unknown"
 
     def test_extract_risk_level_from_response(self):
         """Test risk level extraction from structured response."""
@@ -346,11 +352,12 @@ class TestContentChecker:
         mock_create.side_effect = Exception("Generic error")
         
         with patch.object(checker, '_get_website_info', return_value="Website info"):
-            is_safe, reason = checker.check_domain("example.com")
+            is_safe, reason, category = checker.check_domain("example.com")
         
         assert is_safe is True
         assert "Content check failed" in reason
         assert "Generic error" in reason
+        assert category == "unknown"
 
     def test_multiple_domain_checks(self):
         """Test multiple domain checks in sequence."""
@@ -359,6 +366,7 @@ class TestContentChecker:
         domains = ["example.com", "test.org", "sample.net"]
         
         for domain in domains:
-            is_safe, reason = checker.check_domain(domain)
+            is_safe, reason, category = checker.check_domain(domain)
             assert is_safe is True  # Without API key, should default to safe
-            assert "Content checking disabled" in reason 
+            assert "Content checking disabled" in reason
+            assert category == "unknown" 

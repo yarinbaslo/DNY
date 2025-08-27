@@ -6,15 +6,25 @@ import openai
 import re
 from urllib.parse import urlparse
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import urllib.robotparser
+from .config import Config
 
 class ContentChecker:
     def __init__(self):
         """Initialize the content checker."""
-        self.api_key = None
         self.logger = logging.getLogger(__name__)
+        
+        # Get configuration
+        config = Config.get_content_check_config()
+        self.api_key = config['api_key']
+        self.enabled = config['enabled']
+        self.timeout = config['timeout']
+        
+        # Set OpenAI API key if available
+        if self.api_key:
+            openai.api_key = self.api_key
         
         # Configure requests session with retries
         self.session = requests.Session()
@@ -48,6 +58,8 @@ class ContentChecker:
                 max_tokens=5
             )
             self.api_key = api_key
+            # Update the configuration
+            Config.update_content_check_config(api_key=api_key)
             return True
         except Exception as e:
             self.logger.error(f"Failed to validate API key: {str(e)}")
@@ -57,25 +69,32 @@ class ContentChecker:
         """Clear the API key."""
         self.api_key = None
         openai.api_key = None
+        # Update the configuration
+        Config.update_content_check_config(api_key='')
         
-    def check_domain(self, domain: str) -> Tuple[bool, Optional[str]]:
+    def check_domain(self, domain: str) -> Tuple[bool, Optional[str], Optional[str]]:
         """
-        Check if a domain's content is appropriate using AI.
+        Check if a domain's content is appropriate using AI and categorize it.
         
         Args:
             domain: The domain to check
             
         Returns:
-            Tuple[bool, Optional[str]]: 
+            Tuple[bool, Optional[str], Optional[str]]: 
                 - bool: True if content is appropriate, False if not
                 - str: Reason for the decision, or None if check failed
+                - str: Category of the domain (e.g., 'social', 'shopping', 'gambling', 'gaming', etc.)
         """
         if not self._validate_domain(domain):
-            return True, "Invalid domain format"
+            return True, "Invalid domain format", "unknown"
+        
+        if not self.enabled:
+            self.logger.info("Content checking disabled in configuration")
+            return True, "Content checking disabled in configuration", "unknown"
             
         if not self.api_key:
             self.logger.warning("No API key set for content checking")
-            return True, "Content checking disabled - no API key"
+            return True, "Content checking disabled - no API key", "unknown"
             
         try:
             # Get website content for context
@@ -84,7 +103,7 @@ class ContentChecker:
             # Prepare the prompt with structured format
             prompt = (
                 f"Analyze the domain {domain} for potential harm, unethical content, or security risks. Consider factors like malware, phishing, scams, inappropriate content, and privacy concerns. Context: {website_info}\n\n"
-                "Respond with:\nRisk Level: <low|medium|high>\nReason: <short explanation>"
+                "Respond with:\nRisk Level: <low|medium|high>\nCategory: <social|shopping|gambling|gaming|news|education|entertainment|business|technology|health|finance|adult|malicious|search|cloud|government|nonprofit|other>\nReason: <short explanation>"
             )
             
             # Log the prompt at debug level
@@ -98,7 +117,7 @@ class ContentChecker:
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=150,
-                timeout=10
+                timeout=self.timeout
             )
 
             analysis = response.choices[0].message.content
@@ -106,23 +125,29 @@ class ContentChecker:
             # Log truncated response at debug level
             self.logger.debug(f"Received GPT response: {analysis[:300]}...")
             
-            # Try to extract risk level using regex first
+            # Try to extract risk level and category using regex first
             risk_level = self._extract_risk_level_from_response(analysis)
+            category = self._extract_category_from_response(analysis)
+            
             if risk_level == "unknown":
                 # Fallback to generic extraction if regex fails
                 risk_level = self._extract_risk_level(analysis)
             
-            return self._get_result_from_analysis(risk_level, analysis)
+            if category == "unknown":
+                # Fallback to generic category extraction if regex fails
+                category = self._extract_category(analysis)
+            
+            return self._get_result_from_analysis(risk_level, analysis, category)
             
         except openai.error.Timeout:
             self.logger.error("OpenAI API timeout")
-            return True, "Content check timed out"
+            return True, "Content check timed out", "unknown"
         except openai.error.RateLimitError:
             self.logger.error("OpenAI API rate limit exceeded")
-            return True, "Content check rate limited"
+            return True, "Content check rate limited", "unknown"
         except Exception as e:
             self.logger.error(f"Error checking domain content: {str(e)}")
-            return True, f"Content check failed: {str(e)}"
+            return True, f"Content check failed: {str(e)}", "unknown"
 
     def _validate_domain(self, domain: str) -> bool:
         """Validate domain format."""
@@ -223,6 +248,14 @@ class ContentChecker:
             return risk_match.group(1).lower()
         return "unknown"
 
+    def _extract_category_from_response(self, response: str) -> str:
+        """Extract category from structured GPT response."""
+        # Look for the structured format first
+        category_match = re.search(r'Category:\s*(social|shopping|gambling|gaming|news|education|entertainment|business|technology|health|finance|adult|malicious|search|cloud|government|nonprofit|other)', response, re.IGNORECASE)
+        if category_match:
+            return category_match.group(1).lower()
+        return "unknown"
+
     def _extract_risk_level(self, analysis: str) -> str:
         """Extracts risk level from the analysis text using pattern matching."""
         analysis_lower = analysis.lower()
@@ -257,10 +290,40 @@ class ContentChecker:
                 
         return "unknown"
 
-    def _get_result_from_analysis(self, risk_level: str, analysis: str) -> Tuple[bool, str]:
-        """Convert analysis result to a tuple of (is_appropriate, reason)."""
+    def _extract_category(self, analysis: str) -> str:
+        """Extract category from the analysis text using pattern matching."""
+        analysis_lower = analysis.lower()
+        
+        category_patterns = {
+            'social': ['social', 'facebook', 'twitter', 'instagram', 'linkedin', 'social media', 'networking'],
+            'shopping': ['shopping', 'ecommerce', 'store', 'retail', 'buy', 'purchase', 'marketplace', 'amazon'],
+            'gambling': ['gambling', 'casino', 'betting', 'poker', 'slots', 'lottery'],
+            'gaming': ['gaming', 'game', 'steam', 'xbox', 'playstation', 'nintendo'],
+            'news': ['news', 'journalism', 'media', 'press', 'newspaper'],
+            'education': ['education', 'school', 'university', 'learning', 'course'],
+            'entertainment': ['entertainment', 'movie', 'music', 'video', 'streaming', 'youtube'],
+            'business': ['business', 'company', 'corporate', 'enterprise'],
+            'technology': ['technology', 'tech', 'software', 'hardware', 'computer'],
+            'health': ['health', 'medical', 'medicine', 'hospital', 'doctor'],
+            'finance': ['finance', 'bank', 'investment', 'money', 'trading'],
+            'adult': ['adult', 'porn', 'explicit', 'nsfw'],
+            'malicious': ['malware', 'phishing', 'scam', 'virus', 'malicious'],
+            'search': ['search', 'google', 'bing', 'yahoo'],
+            'cloud': ['cloud', 'hosting', 'server', 'cdn'],
+            'government': ['government', 'gov', 'official', 'public'],
+            'nonprofit': ['nonprofit', 'charity', 'organization', 'foundation']
+        }
+        
+        for category, patterns in category_patterns.items():
+            if any(pattern in analysis_lower for pattern in patterns):
+                return category
+                
+        return "other"
+
+    def _get_result_from_analysis(self, risk_level: str, analysis: str, category: str) -> Tuple[bool, str, str]:
+        """Convert analysis result to a tuple of (is_appropriate, reason, category)."""
         if risk_level == "high":
-            return False, f"WARNING: This domain has been identified as potentially harmful. {analysis}"
+            return False, f"WARNING: This domain has been identified as potentially harmful. {analysis}", category
         elif risk_level == "medium":
-            return False, f"CAUTION: This domain may contain harmful content. {analysis}"
-        return True, "Content appears appropriate" 
+            return False, f"CAUTION: This domain may contain harmful content. {analysis}", category
+        return True, "Content appears appropriate", category 
