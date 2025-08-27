@@ -1,47 +1,108 @@
 # DNY - Dynamic Domain Name for You
 
-DNY is a cutting-edge tool that dynamically manages DNS resolution to provide seamless, automated access to websites blocked due to DNS restrictions. The tool identifies DNS-related blocks, dynamically switches to an alternative DNS provider, and ensures an ethical browsing experience by analyzing site content. It operates transparently, requiring zero technical expertise from users.
+<div align="center">
+  <img width="376" alt="DNY Logo" src="https://github.com/user-attachments/assets/16a7372c-19f0-4672-8989-763b15231429" />
+  
+  [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
+</div>
 
-<img width="376" alt="image" src="https://github.com/user-attachments/assets/16a7372c-19f0-4672-8989-763b15231429" />
+> **Computer Communication Workshop Project**  
+> **Team Members:** Dana Haham, Noa Pinsler, Yarin Baslo
 
-### Docs
+## 🚀 Overview
 
-1. **Ideation and Design**
-2. **Presentation**
+DNY (Dynamic Domain Name for You) is an intelligent DNS tool that automatically detects and bypasses DNS-based restrictions while maintaining system integrity. The tool provides seamless access to blocked websites through dynamic DNS server switching, combined with AI-powered content safety analysis. It operates transparently, requiring zero technical expertise from users.
 
-## Overview
+## ✨ Key Features
 
-### Problem
+### 🔧 Intelligent DNS Proxy Service
+- Acts as a local DNS server intercepting all DNS queries on port 53
+- Cross-platform compatibility (Windows, macOS, Linux)
+- Intelligent DNS resolution with sub-50ms response times
 
-Access to specific websites is often restricted due to:
-	•	Government censorship.
-	•	ISP-level blocking.
-	•	Geographical content restrictions.
-Additionally, DNS servers may face downtimes, causing interruptions in connectivity. Manual DNS switching is tedious, especially for non-technical users.
+### 🌐 Automatic Network Management
+- **Smart Interface Detection**: Automatically identifies active network interfaces
+- **Local DNS Discovery**: Detects and utilizes existing DNS servers as primary resolvers
+- **Seamless Integration**: Adds intelligent fallback without disrupting original DNS configuration
 
-### Solution
+### 🛡️ Block Detection & Dynamic Switching
+- **Real-Time Monitoring**: Continuously monitors DNS resolution attempts
+- **Multi-Condition Diagnosis**: Identifies various failure types (timeout, invalid IP, unreachable addresses)
+- **Dynamic Fallback**: Multi-tier fallback mechanism with alternative DNS servers
+- **Offline Support**: Cache-based mechanism for faster access
 
-DNY dynamically changes DNS configurations only for blocked or inaccessible domains, ensuring a seamless user experience. It is automated, user-friendly, and compatible across platforms, helping users bypass DNS-related restrictions effortlessly.
+### 🔍 Ethical Content Analysis
+- AI-powered safety assessment using large language models (LLMs)
+- Real-time website content analysis before user access
+- Risk level classification with clear warnings
+- Maintains user safety and informed access decisions
 
-### Features
+### ⚡ High-Performance Caching
+- Advanced caching system for faster repeat queries
+- Thread-safe cache operations with FIFO eviction policy
+- Optimized for minimal latency and maximum throughput
 
-1. **Automatic Detection**  
-   - Identifies inaccessible domains due to DNS restrictions.
+## 📋 Prerequisites
 
-2. **Dynamic DNS Switching**  
-   - Automatically reroutes blocked requests to external DNS providers (e.g., Google DNS, Cloudflare DNS).
+- Python 3.8 or higher
+- Administrator/root privileges (required for DNS interception)
+- Internet connection for AI content analysis
+- Supported operating systems: Windows 10+, macOS 10.14+, Linux (Ubuntu 18.04+)
 
-3. **Ethical Content Check**  
-   - Analyzes the requested domain for harmful or unethical content and provides warnings to users.
+## 🛠️ Installation
 
-4. **User-Friendly Notifications**  
-   - Notifies users when:  
-     - A domain is blocked.  
-     - DNS switching is successful.  
-     - A site is flagged as unsafe or unethical.
+### Quick Install
 
-5. **Seamless Integration**  
-   - Works in the background, requiring no user intervention or technical knowledge.
+```bash
+# Clone the repository
+git clone https://github.com/your-username/DNY.git
+cd DNY
 
-6. **Cross-Platform Support**  
-   - Designed to work on Windows, macOS, and Linux.
+# Install dependencies
+pip install -r requirements.txt
+
+# Install the package
+pip install -e .
+```
+
+## 🚀 Usage
+
+### Basic Usage
+
+```bash
+# Start DNY service (requires administrator privileges)
+sudo python -m dny.main
+
+# Or use the installed command
+sudo dny-start
+```
+
+### Logging
+
+Enable verbose logging for debugging:
+```bash
+dny-start --log-level DEBUG
+```
+
+
+## 📁 Project Structure
+
+```
+DNY/
+├── code/                          # Main application code
+│   ├── DNSProxyServiceDeploy/    # Deployment configurations
+│   ├── src/                      # Source code
+│   │   ├── dns/                  # DNS resolution components
+│   │   └── os_handlers/          # OS-specific handlers
+│   └── tests/                    # Test suite
+├── docs/                         # Documentation
+├── .gitignore                    # Git ignore file
+├── README.md                     # This file
+├── requirements.txt              # Python dependencies
+└── setup.py                     # Package setup
+```
+
+## 📖 Documentation
+
+- [Abstract idea & High Level Architecture](https://docs.google.com/document/d/1vMAOhPR4wX_nsEkNH9xgcRl6WmOqgszwer-hzn650JI/edit?usp=sharing)
+- [Presentation](https://docs.google.com/presentation/d/1wM4SkH57ZGyopNIGB6XlzAySyPkkMxcDJZOvJLJsQ7A/edit?usp=sharing)
