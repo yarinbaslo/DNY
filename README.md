@@ -4,6 +4,10 @@
   <img width="376" alt="DNY Logo" src="https://github.com/user-attachments/assets/16a7372c-19f0-4672-8989-763b15231429" />
   
   [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
+  [![MySQL](https://img.shields.io/badge/MySQL-8.x-blue.svg)](https://mysql.com)
+  [![AWS](https://img.shields.io/badge/AWS-Lambda%20%7C%20RDS-orange.svg)](https://aws.amazon.com)
+  [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--3.5%20Turbo-green.svg)](https://openai.com)
+  [![Grafana](https://img.shields.io/badge/Grafana-Dashboard-blue.svg)](https://grafana.com)
 </div>
 
 > **Computer Communication Workshop Project**  
@@ -42,67 +46,22 @@ DNY (Dynamic Domain Name for You) is an intelligent DNS tool that automatically 
 - Thread-safe cache operations with FIFO eviction policy
 - Optimized for minimal latency and maximum throughput
 
-## 📋 Prerequisites
+### 📊 Comprehensive Monitoring Dashboards
+- **Grafana Integration**: Interactive dashboards for real-time system monitoring
+- **Inner Stats Dashboard**: Detailed performance metrics and system health monitoring
+- **User Surf Patterns Dashboard**: Analytics on browsing patterns and DNS query insights
 
-- Python 3.8 or higher
-- Administrator/root privileges (required for DNS interception)
-- Internet connection for AI content analysis
-- Supported operating systems: Windows 10+, macOS 10.14+, Linux (Ubuntu 18.04+)
+### 💾 Robust Data Storage
+- **Database Management**: Centralized data storage for users, DNS queries and cache entries
+- **Persistent Storage**: Maintains historical data for analysis and AI Insights
+- **Data Integrity**: Ensures reliable storage of DNS resolution patterns and user preferences
 
-## 🛠️ Installation
+### 🔔 Intelligent Notification System
+- **Real-Time Alerts**: Instant notifications for system events and warnings
+- **User-Friendly Messaging**: Clear, actionable notifications for system status updates
 
-### Quick Install
-
-```bash
-# Clone the repository
-git clone https://github.com/your-username/DNY.git
-cd DNY
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install the package
-pip install -e .
-```
-
-## 🚀 Usage
-
-### Basic Usage
-
-```bash
-# Start DNY service (requires administrator privileges)
-sudo python -m dny.main
-
-# Or use the installed command
-sudo dny-start
-```
-
-### Logging
-
-Enable verbose logging for debugging:
-```bash
-dny-start --log-level DEBUG
-```
-
-
-## 📁 Project Structure
-
-```
-DNY/
-├── code/                          # Main application code
-│   ├── DNSProxyServiceDeploy/    # Deployment configurations
-│   ├── src/                      # Source code
-│   │   ├── dns/                  # DNS resolution components
-│   │   └── os_handlers/          # OS-specific handlers
-│   └── tests/                    # Test suite
-├── docs/                         # Documentation
-├── .gitignore                    # Git ignore file
-├── README.md                     # This file
-├── requirements.txt              # Python dependencies
-└── setup.py                     # Package setup
-```
 
 ## 📖 Documentation
 
 - [Abstract idea & High Level Architecture](https://docs.google.com/document/d/1vMAOhPR4wX_nsEkNH9xgcRl6WmOqgszwer-hzn650JI/edit?usp=sharing)
-- [Presentation](https://docs.google.com/presentation/d/1wM4SkH57ZGyopNIGB6XlzAySyPkkMxcDJZOvJLJsQ7A/edit?usp=sharing)
+- [Presentation](https://docs.google.com/presentation/d/1AtuN2-Qll6NSADQBEKt9p-TmCLhxsIl0xbgi3fFuFaQ/edit?usp=sharing)
