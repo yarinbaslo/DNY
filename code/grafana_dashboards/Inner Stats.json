@@ -1,0 +1,934 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 1,
+    "id": 4,
+    "links": [],
+    "panels": [
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 7,
+          "x": 0,
+          "y": 0
+        },
+        "id": 12,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "editorMode": "code",
+            "format": "table",
+            "rawSql": "SELECT COUNT(DISTINCT uc.user_id) FROM user_connections uc JOIN user_query uq ON uq.connection_id = uc.id JOIN domains d ON uq.domain_id = d.id WHERE $__timeFilter(uq.timestamp) AND d.name IN ($Domain) AND d.category IN ($Category)",
+            "refId": "A"
+          }
+        ],
+        "title": "Unique Users",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 7,
+          "y": 0
+        },
+        "id": 11,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "editorMode": "code",
+            "format": "table",
+            "rawSql": "SELECT COUNT(uq.id) FROM user_query uq JOIN domains d ON uq.domain_id = d.id WHERE $__timeFilter(uq.timestamp) AND d.name IN ($Domain) AND d.category IN ($Category)",
+            "refId": "A"
+          }
+        ],
+        "title": "Total Queries",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 13,
+          "x": 11,
+          "y": 0
+        },
+        "id": 1,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "right",
+            "showLegend": true
+          },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "multi",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "alias": "$__series.name",
+            "editorMode": "code",
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  DATE(uq.timestamp) AS time,\n  COUNT(DISTINCT uc.user_id) AS \"Unique Users\"\nFROM\n  user_query uq\nJOIN\n  user_connections uc ON uq.connection_id = uc.id\nWHERE\n  $__timeFilter(uq.timestamp)\nGROUP BY\n  time\nORDER BY\n  time;",
+            "refId": "A",
+            "sql": {
+              "columns": [
+                {
+                  "parameters": [],
+                  "type": "function"
+                }
+              ],
+              "groupBy": [
+                {
+                  "property": {
+                    "type": "string"
+                  },
+                  "type": "groupBy"
+                }
+              ],
+              "limit": 50
+            }
+          }
+        ],
+        "title": "Total User Over Time",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 3,
+          "w": 4,
+          "x": 7,
+          "y": 4
+        },
+        "id": 13,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "editorMode": "code",
+            "format": "table",
+            "rawSql": "SELECT COUNT(DISTINCT uq.domain_id) FROM user_query uq JOIN domains d ON uq.domain_id = d.id WHERE $__timeFilter(uq.timestamp) AND d.name IN ($Domain) AND d.category IN ($Category)",
+            "refId": "A"
+          }
+        ],
+        "title": "Unique Domains Accessed",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 15,
+              "gradientMode": "opacity",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "decimals": 0,
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 10,
+          "w": 14,
+          "x": 0,
+          "y": 7
+        },
+        "id": 99,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "multi",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "alias": "Total Queries",
+            "editorMode": "code",
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  DATE(uq.timestamp) AS time\nFROM\n  user_query uq\nWHERE\n  $__timeFilter(uq.timestamp)\nGROUP BY\n  time\nORDER BY\n  time;",
+            "refId": "A",
+            "sql": {
+              "columns": [
+                {
+                  "parameters": [],
+                  "type": "function"
+                }
+              ],
+              "groupBy": [
+                {
+                  "property": {
+                    "type": "string"
+                  },
+                  "type": "groupBy"
+                }
+              ],
+              "limit": 50
+            }
+          },
+          {
+            "alias": "Cache Hits",
+            "editorMode": "code",
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  DATE(uq.timestamp) AS time,\n  SUM(CASE WHEN uq.cache_hit = TRUE THEN 1 ELSE 0 END) AS \"Cache Hits\"\nFROM\n  user_query uq\nWHERE\n  $__timeFilter(uq.timestamp)\nGROUP BY\n  time\nORDER BY\n  time;",
+            "refId": "B"
+          },
+          {
+            "alias": "Cache Misses",
+            "editorMode": "code",
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  DATE(uq.timestamp) AS time,\n  SUM(CASE WHEN uq.cache_hit = FALSE THEN 1 ELSE 0 END) AS \"Cache Misses\"\nFROM\n  user_query uq\nWHERE\n  $__timeFilter(uq.timestamp)\nGROUP BY\n  time\nORDER BY\n  time;",
+            "refId": "C"
+          }
+        ],
+        "title": "Cache Hit vs. Miss ",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              }
+            },
+            "mappings": []
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 10,
+          "w": 10,
+          "x": 14,
+          "y": 7
+        },
+        "id": 4,
+        "options": {
+          "displayLabels": [
+            "percent",
+            "name"
+          ],
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "pieType": "pie",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "/.*/",
+            "values": true
+          },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "editorMode": "code",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT\n    u.os_type AS \"OS Type\",\n    COUNT(uq.id) AS \"Queries\"\nFROM\n    user_query uq\nJOIN\n    user_connections uc ON uq.connection_id = uc.id\nJOIN\n    users u ON uc.user_id = u.id\nJOIN\n    domains d ON uq.domain_id = d.id\nWHERE\n  $__timeFilter(uq.timestamp) AND d.name IN ($Domain) AND d.category IN ($Category)\nGROUP BY\n    1\nORDER BY\n    \"Queries\" DESC\nLIMIT 10;",
+            "refId": "A"
+          }
+        ],
+        "title": "Queries by OS Type (Overall)",
+        "type": "piechart"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "cellOptions": {
+                "type": "auto"
+              },
+              "inspect": false
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 11,
+          "x": 0,
+          "y": 17
+        },
+        "id": 7,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "fields": "",
+            "reducer": [
+              "sum"
+            ],
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "Query Count"
+            }
+          ]
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "alias": "",
+            "editorMode": "code",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  u.username,\n  u.browsing_profile AS \"Browsing Profile\",\n  COUNT(uq.id) AS \"Query Count\"\nFROM\n  user_query uq\nJOIN\n  user_connections uc ON uq.connection_id = uc.id\nJOIN\n  users u ON uc.user_id = u.id\nJOIN\n  domains d ON uq.domain_id = d.id\nWHERE\n  $__timeFilter(uq.timestamp) AND d.name IN ($Domain) AND d.category IN ($Category)\nGROUP BY\n  u.username, u.browsing_profile\nORDER BY\n  \"Query Count\" DESC\nLIMIT 10;",
+            "refId": "A",
+            "sql": {
+              "columns": [
+                {
+                  "parameters": [],
+                  "type": "function"
+                }
+              ],
+              "groupBy": [
+                {
+                  "property": {
+                    "type": "string"
+                  },
+                  "type": "groupBy"
+                }
+              ],
+              "limit": 50
+            }
+          }
+        ],
+        "title": "Top 10 Most Active Users",
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "cellOptions": {
+                "type": "auto"
+              },
+              "inspect": false
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 13,
+          "x": 11,
+          "y": 17
+        },
+        "id": 23,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "fields": "",
+            "reducer": [
+              "sum"
+            ],
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "Query Count"
+            }
+          ]
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "editorMode": "code",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  uc.region AS \"Region\",\n  COUNT(uq.id) AS \"Total DNS Queries\"\nFROM\n  user_query uq\nJOIN\n  user_connections uc ON uq.connection_id = uc.id\nWHERE\n  $__timeFilter(uq.timestamp)\nGROUP BY\n  uc.region\nORDER BY\n  \"Total DNS Queries\" DESC;",
+            "refId": "A",
+            "sql": {
+              "columns": [
+                {
+                  "parameters": [],
+                  "type": "function"
+                }
+              ],
+              "groupBy": [
+                {
+                  "property": {
+                    "type": "string"
+                  },
+                  "type": "groupBy"
+                }
+              ],
+              "limit": 50
+            }
+          }
+        ],
+        "title": "Top Domain Categories by Region",
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 10,
+          "x": 0,
+          "y": 25
+        },
+        "id": 28,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "editorMode": "code",
+            "format": "table",
+            "rawSql": "SELECT\n  (COUNT(CASE WHEN uq.is_blocked = FALSE THEN 1 END) / COUNT(uq.id)) * 100 AS success_rate\nFROM\n  user_query uq\nWHERE\n  $__timeFilter(uq.timestamp);",
+            "refId": "A"
+          }
+        ],
+        "title": "Overall Query Success Rate (%)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "cellOptions": {
+                "type": "auto"
+              },
+              "inspect": false
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 14,
+          "x": 10,
+          "y": 25
+        },
+        "id": 14,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "fields": "",
+            "reducer": [
+              "sum"
+            ],
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "Query Count"
+            }
+          ]
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "editorMode": "code",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  uc.ISP,\n  COUNT(uq.id) AS \"Query Count\"\nFROM\n  user_query uq\nJOIN\n  user_connections uc ON uq.connection_id = uc.id\nJOIN\n  domains d ON uq.domain_id = d.id\nWHERE\n  $__timeFilter(uq.timestamp) AND uc.ISP IS NOT NULL AND d.name IN ($Domain) AND d.category IN ($Category)\nGROUP BY\n  1\nORDER BY\n  \"Query Count\" DESC\nLIMIT 20;",
+            "refId": "A"
+          }
+        ],
+        "title": "Top ISPs by Query Count",
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "cewanpuzy9ekgd"
+        },
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 33
+        },
+        "id": 20,
+        "options": {
+          "dedupStrategy": "none",
+          "enableInfiniteScrolling": false,
+          "enableLogDetails": true,
+          "prettifyLogMessage": false,
+          "showCommonLabels": false,
+          "showLabels": false,
+          "showTime": false,
+          "sortOrder": "Descending",
+          "wrapLogMessage": false
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "editorMode": "code",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  uq.timestamp AS \"time\",\n  CONCAT('Blocked DNS Query | ISP: ', uc.ISP, ' | Domain: ', d.name) AS \"message\"\nFROM\n  user_query uq\nJOIN\n  user_connections uc ON uq.connection_id = uc.id\nJOIN\n  domains d ON uq.domain_id = d.id\nWHERE\n  $__timeFilter(uq.timestamp) AND uq.is_blocked = TRUE\nORDER BY\n  uq.timestamp DESC;",
+            "refId": "A"
+          }
+        ],
+        "title": "Blocked Domains (Log View)",
+        "type": "logs"
+      }
+    ],
+    "preload": false,
+    "refresh": "5s",
+    "schemaVersion": 41,
+    "tags": [
+      "user_patterns",
+      "business_intelligence"
+    ],
+    "templating": {
+      "list": [
+        {
+          "current": {
+            "text": "Overall",
+            "value": "Overall"
+          },
+          "name": "GroupBy",
+          "options": [
+            {
+              "selected": true,
+              "text": "Overall",
+              "value": "Overall"
+            },
+            {
+              "selected": false,
+              "text": "Username",
+              "value": "Username"
+            },
+            {
+              "selected": false,
+              "text": "Country",
+              "value": "Country"
+            },
+            {
+              "selected": false,
+              "text": "Region",
+              "value": "Region"
+            }
+          ],
+          "query": "Overall,Username,Country,Region",
+          "type": "custom"
+        },
+        {
+          "current": {
+            "text": "All",
+            "value": [
+              "$__all"
+            ]
+          },
+          "datasource": {
+            "type": "mysql",
+            "uid": "cewanpuzy9ekgd"
+          },
+          "definition": "SELECT name FROM domains ORDER BY name",
+          "includeAll": true,
+          "label": "Domain",
+          "multi": true,
+          "name": "Domain",
+          "options": [],
+          "query": "SELECT name FROM domains ORDER BY name",
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        },
+        {
+          "current": {
+            "text": "All",
+            "value": [
+              "$__all"
+            ]
+          },
+          "datasource": {
+            "type": "mysql",
+            "uid": "cewanpuzy9ekgd"
+          },
+          "definition": "SELECT DISTINCT category FROM domains WHERE category IS NOT NULL ORDER BY category",
+          "includeAll": true,
+          "label": "Category",
+          "multi": true,
+          "name": "Category",
+          "options": [],
+          "query": "SELECT DISTINCT category FROM domains WHERE category IS NOT NULL ORDER BY category",
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        }
+      ]
+    },
+    "time": {
+      "from": "2025-04-07T20:52:29.999Z",
+      "to": "2025-10-07T08:52:29.999Z"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Inner Stats",
+    "uid": "inner-stats",
+    "version": 53
+  }
