@@ -248,6 +248,175 @@ class DatabaseManager:
         except mysql.connector.Error as err:
             logging.error(f"Error ending user session: {err}")
     
+    def get_all_dns_providers(self) -> List[Dict]:
+        """
+        Get all DNS providers from the database
+        
+        Returns:
+            List of dictionaries containing DNS provider information
+        """
+        connection = self._ensure_connection()
+        if not connection:
+            return []
+        
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, name, primary_ip, secondary_ip, features, is_active 
+                FROM dns_providers 
+                ORDER BY name
+            """)
+            
+            providers = cursor.fetchall()
+            cursor.close()
+            
+            # Parse features from JSON string to list
+            for provider in providers:
+                if provider['features']:
+                    try:
+                        provider['features'] = json.loads(provider['features'])
+                    except json.JSONDecodeError:
+                        provider['features'] = []
+                else:
+                    provider['features'] = []
+            
+            logging.debug(f"Retrieved {len(providers)} DNS providers")
+            return providers
+            
+        except mysql.connector.Error as err:
+            logging.error(f"Error retrieving DNS providers: {err}")
+            return []
+    
+    def get_active_dns_providers(self) -> List[Dict]:
+        """
+        Get only active DNS providers from the database
+        
+        Returns:
+            List of dictionaries containing active DNS provider information
+        """
+        connection = self._ensure_connection()
+        if not connection:
+            return []
+        
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, name, primary_ip, secondary_ip, features, is_active 
+                FROM dns_providers 
+                WHERE is_active = 1
+                ORDER BY name
+            """)
+            
+            providers = cursor.fetchall()
+            cursor.close()
+            
+            # Parse features from JSON string to list
+            for provider in providers:
+                if provider['features']:
+                    try:
+                        provider['features'] = json.loads(provider['features'])
+                    except json.JSONDecodeError:
+                        provider['features'] = []
+                else:
+                    provider['features'] = []
+            
+            logging.debug(f"Retrieved {len(providers)} active DNS providers")
+            return providers
+            
+        except mysql.connector.Error as err:
+            logging.error(f"Error retrieving active DNS providers: {err}")
+            return []
+    
+    def get_dns_provider_by_id(self, provider_id: int) -> Optional[Dict]:
+        """
+        Get a specific DNS provider by ID
+        
+        Args:
+            provider_id: ID of the DNS provider to retrieve
+            
+        Returns:
+            Dictionary containing DNS provider information or None if not found
+        """
+        connection = self._ensure_connection()
+        if not connection:
+            return None
+        
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, name, primary_ip, secondary_ip, features, is_active 
+                FROM dns_providers 
+                WHERE id = %s
+            """, (provider_id,))
+            
+            provider = cursor.fetchone()
+            cursor.close()
+            
+            if provider:
+                # Parse features from JSON string to list
+                if provider['features']:
+                    try:
+                        provider['features'] = json.loads(provider['features'])
+                    except json.JSONDecodeError:
+                        provider['features'] = []
+                else:
+                    provider['features'] = []
+                
+                logging.debug(f"Retrieved DNS provider: {provider['name']}")
+                return provider
+            else:
+                logging.warning(f"DNS provider with ID {provider_id} not found")
+                return None
+            
+        except mysql.connector.Error as err:
+            logging.error(f"Error retrieving DNS provider by ID: {err}")
+            return None
+    
+    def get_dns_provider_by_name(self, name: str) -> Optional[Dict]:
+        """
+        Get a specific DNS provider by name
+        
+        Args:
+            name: Name of the DNS provider to retrieve
+            
+        Returns:
+            Dictionary containing DNS provider information or None if not found
+        """
+        connection = self._ensure_connection()
+        if not connection:
+            return None
+        
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, name, primary_ip, secondary_ip, features, is_active 
+                FROM dns_providers 
+                WHERE name = %s
+            """, (name,))
+            
+            provider = cursor.fetchone()
+            cursor.close()
+            
+            if provider:
+                # Parse features from JSON string to list
+                if provider['features']:
+                    try:
+                        provider['features'] = json.loads(provider['features'])
+                    except json.JSONDecodeError:
+                        provider['features'] = []
+                else:
+                    provider['features'] = []
+                
+                logging.debug(f"Retrieved DNS provider: {provider['name']}")
+                return provider
+            else:
+                logging.warning(f"DNS provider '{name}' not found")
+                return None
+            
+        except mysql.connector.Error as err:
+            logging.error(f"Error retrieving DNS provider by name: {err}")
+            return None
+
     def close(self):
         """Close database connection"""
         self.end_user_session()

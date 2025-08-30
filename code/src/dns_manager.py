@@ -1,5 +1,4 @@
 import logging
-import json
 import os
 from os_handlers.factory import OSHandlerFactory
 from dns.resolver import DNSResolver
@@ -36,34 +35,44 @@ class DNSManager:
         self.fallback_dns_list = self._load_fallback_dns_list()
 
     def _load_fallback_dns_list(self):
-        """Load fallback DNS servers from dns_list.json file."""
+        """Load fallback DNS servers from database - only active providers."""
         try:
-            # Get the directory where this script is located
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            # Go up one level to the code directory and find dns_list.json
-            dns_list_path = os.path.join(os.path.dirname(current_dir), 'dns_list.json')
+            # Get active DNS providers from database
+            dns_providers = self.database_manager.get_active_dns_providers()
             
-            with open(dns_list_path, 'r') as f:
-                dns_providers = json.load(f)
+            if not dns_providers:
+                logging.warning("No active DNS providers found in database, using default servers")
+                return self._get_default_dns_servers()
             
             fallback_list = []
             for provider in dns_providers:
-                # Add both primary and secondary DNS servers from each provider
-                fallback_list.append((provider['primary'], 53))
-                fallback_list.append((provider['secondary'], 53))
+                # Add both primary and secondary DNS servers from each active provider
+                if provider.get('primary_ip'):
+                    fallback_list.append((provider['primary_ip'], 53))
+                    logging.debug(f"Added primary DNS: {provider['primary_ip']} ({provider['name']})")
+                
+                if provider.get('secondary_ip'):
+                    fallback_list.append((provider['secondary_ip'], 53))
+                    logging.debug(f"Added secondary DNS: {provider['secondary_ip']} ({provider['name']})")
             
-            logging.info(f"Loaded {len(fallback_list)} fallback DNS servers from dns_list.json")
+            logging.info(f"Loaded {len(fallback_list)} fallback DNS servers from {len(dns_providers)} active providers in database")
             return fallback_list
             
         except Exception as e:
-            logging.error(f"Failed to load DNS list from file: {str(e)}")
-            # Fallback to default DNS servers if file loading fails
-            return [
-                ('8.8.8.8', 53),      # Google Primary
-                ('8.8.4.4', 53),      # Google Secondary
-                ('1.1.1.1', 53),      # Cloudflare Primary
-                ('1.0.0.1', 53),      # Cloudflare Secondary
-            ]
+            logging.error(f"Failed to load DNS list from database: {str(e)}")
+            return self._get_default_dns_servers()
+    
+    def _get_default_dns_servers(self):
+        """Get default DNS servers as fallback when database is unavailable."""
+        default_dns_config = Config.get_default_dns_config()
+        default_servers = []
+        
+        for server in default_dns_config['servers']:
+            default_servers.append((server['ip'], server['port']))
+            logging.debug(f"Added default DNS: {server['ip']}:{server['port']} ({server['name']})")
+        
+        logging.info(f"Using {len(default_servers)} default DNS servers as fallback from config")
+        return default_servers
 
     def start(self):
         """
