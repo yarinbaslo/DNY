@@ -29,6 +29,16 @@ class Config:
         'timeout': 10  # seconds
     }
     
+    # Default DNS servers (fallback when database is unavailable)
+    DEFAULT_DNS_CONFIG = {
+        'servers': [
+            {'ip': '8.8.8.8', 'port': 53, 'name': 'Google Primary'},
+            {'ip': '8.8.4.4', 'port': 53, 'name': 'Google Secondary'},
+            {'ip': '1.1.1.1', 'port': 53, 'name': 'Cloudflare Primary'},
+            {'ip': '1.0.0.1', 'port': 53, 'name': 'Cloudflare Secondary'},
+        ]
+    }
+    
     @classmethod
     def get_database_config(cls) -> Dict[str, Any]:
         """Get database configuration"""
@@ -45,6 +55,11 @@ class Config:
         return cls.CONTENT_CHECK_CONFIG.copy()
     
     @classmethod
+    def get_default_dns_config(cls) -> Dict[str, Any]:
+        """Get default DNS servers configuration"""
+        return cls.DEFAULT_DNS_CONFIG.copy()
+    
+    @classmethod
     def update_database_config(cls, **kwargs):
         """Update database configuration with new values"""
         cls.DATABASE_CONFIG.update(kwargs)
@@ -58,3 +73,8 @@ class Config:
     def update_content_check_config(cls, **kwargs):
         """Update content checking configuration with new values"""
         cls.CONTENT_CHECK_CONFIG.update(kwargs)
+    
+    @classmethod
+    def update_default_dns_config(cls, **kwargs):
+        """Update default DNS configuration with new values"""
+        cls.DEFAULT_DNS_CONFIG.update(kwargs)
